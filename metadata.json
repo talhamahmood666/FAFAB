@@ -1,0 +1,6 @@
+{
+  "name": "FAFAB Limited - Accounting & HR ERP",
+  "description": "Comprehensive Accounting, Invoicing, Payroll & HR Management system tailored for FAFAB Limited in Bahria Town, Lahore, Pakistan, compliant with FBR, PRA, PESSI, and EOBI regulations.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
