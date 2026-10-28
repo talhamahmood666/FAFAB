@@ -40,6 +40,7 @@ import {
   calculateSalaryStructureFromGross, 
   computeEmployeeMonthlyPayroll 
 } from '../utils/payrollCalculations';
+import { SupportedCurrency, DEFAULT_CURRENCIES, formatBasePKR } from '../utils/currency';
 
 interface ErpContextType {
   // Navigation & Role
@@ -49,6 +50,13 @@ interface ErpContextType {
   setActiveModule: (module: ActiveModule) => void;
   isSidebarOpen: boolean;
   setIsSidebarOpen: (open: boolean) => void;
+
+  // Multi-Currency
+  selectedCurrency: SupportedCurrency;
+  setSelectedCurrency: (curr: SupportedCurrency) => void;
+  customExchangeRates: Record<SupportedCurrency, number>;
+  setExchangeRate: (code: SupportedCurrency, rate: number) => void;
+  formatAmount: (amountInPKR: number) => string;
 
   // Company Profile
   companyProfile: CompanyProfile;
@@ -111,6 +119,38 @@ export const ErpProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [activeModule, setActiveModule] = useState<ActiveModule>('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [companyProfile] = useState<CompanyProfile>(companyProfileData);
+
+  // Multi-Currency State
+  const [selectedCurrency, setSelectedCurrency] = useState<SupportedCurrency>(() => {
+    const saved = localStorage.getItem('fafab_currency');
+    return (saved as SupportedCurrency) || 'PKR';
+  });
+
+  const [customExchangeRates, setCustomExchangeRates] = useState<Record<SupportedCurrency, number>>(() => {
+    const saved = localStorage.getItem('fafab_exchange_rates');
+    return saved ? JSON.parse(saved) : {
+      PKR: DEFAULT_CURRENCIES.PKR.rateToPKR,
+      USD: DEFAULT_CURRENCIES.USD.rateToPKR,
+      GBP: DEFAULT_CURRENCIES.GBP.rateToPKR,
+      EUR: DEFAULT_CURRENCIES.EUR.rateToPKR,
+    };
+  });
+
+  useEffect(() => {
+    localStorage.setItem('fafab_currency', selectedCurrency);
+  }, [selectedCurrency]);
+
+  useEffect(() => {
+    localStorage.setItem('fafab_exchange_rates', JSON.stringify(customExchangeRates));
+  }, [customExchangeRates]);
+
+  const setExchangeRate = (code: SupportedCurrency, rate: number) => {
+    setCustomExchangeRates(prev => ({ ...prev, [code]: rate }));
+  };
+
+  const formatAmount = (amountInPKR: number): string => {
+    return formatBasePKR(amountInPKR, selectedCurrency, customExchangeRates);
+  };
 
   // Accounting State
   const [invoices, setInvoices] = useState<Invoice[]>(() => {
@@ -245,13 +285,17 @@ export const ErpProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
     setInvoices(prev => [newInvoice, ...prev]);
 
-    // Update Accounts Receivable and Output Tax
+    // Update Accounts Receivable (1100) and Output Tax (2100) in PKR
+    const rate = (newInvoice.currency && newInvoice.currency !== 'PKR' && newInvoice.exchangeRate) ? newInvoice.exchangeRate : 1;
+    const pkrBalanceDue = newInvoice.balanceDue * rate;
+    const pkrPraTax = newInvoice.praTaxAmount * rate;
+
     setAccounts(prev => prev.map(acc => {
       if (acc.code === '1100') {
-        return { ...acc, balance: acc.balance + newInvoice.balanceDue };
+        return { ...acc, balance: acc.balance + pkrBalanceDue };
       }
       if (acc.code === '2100') {
-        return { ...acc, balance: acc.balance + newInvoice.praTaxAmount };
+        return { ...acc, balance: acc.balance + pkrPraTax };
       }
       return acc;
     }));
@@ -267,24 +311,28 @@ export const ErpProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const recordInvoicePayment = (id: string, amount: number, method: string, refNo: string) => {
-    setInvoices(prev => prev.map(inv => {
-      if (inv.id === id) {
-        const newPaid = Math.min(inv.grandTotal, inv.amountPaid + amount);
-        const newBalance = Math.max(0, inv.grandTotal - newPaid);
+    const inv = invoices.find(i => i.id === id);
+    const rate = (inv?.currency && inv.currency !== 'PKR' && inv.exchangeRate) ? inv.exchangeRate : 1;
+    const pkrAmount = amount * rate;
+
+    setInvoices(prev => prev.map(i => {
+      if (i.id === id) {
+        const newPaid = Math.min(i.grandTotal, i.amountPaid + amount);
+        const newBalance = Math.max(0, i.grandTotal - newPaid);
         const newStatus: InvoiceStatus = newBalance === 0 ? 'PAID' : 'PARTIALLY_PAID';
         return {
-          ...inv,
+          ...i,
           amountPaid: newPaid,
           balanceDue: newBalance,
           status: newStatus,
         };
       }
-      return inv;
+      return i;
     }));
 
     setBankAccounts(prev => prev.map(bank => {
       if (bank.id === 'bank-1') {
-        return { ...bank, currentBalance: bank.currentBalance + amount };
+        return { ...bank, currentBalance: bank.currentBalance + pkrAmount };
       }
       return bank;
     }));
@@ -293,11 +341,11 @@ export const ErpProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       id: `tx-${Date.now()}`,
       bankAccountId: 'bank-1',
       date: new Date().toISOString().split('T')[0],
-      description: `Payment for Invoice (${method})`,
+      description: `Payment for Invoice ${inv?.invoiceNumber || ''} (${method}${inv?.currency && inv.currency !== 'PKR' ? ` @ ${amount} ${inv.currency}` : ''})`,
       referenceNo: refNo || `REF-${Date.now().toString().slice(-6)}`,
-      debit: amount,
+      debit: pkrAmount,
       credit: 0,
-      runningBalance: (bankAccounts.find(b => b.id === 'bank-1')?.currentBalance || 0) + amount,
+      runningBalance: (bankAccounts.find(b => b.id === 'bank-1')?.currentBalance || 0) + pkrAmount,
       isReconciled: true,
     };
     setBankTransactions(prev => [newTx, ...prev]);
@@ -532,6 +580,11 @@ export const ErpProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         isSidebarOpen,
         setIsSidebarOpen,
         companyProfile,
+        selectedCurrency,
+        setSelectedCurrency,
+        customExchangeRates,
+        setExchangeRate,
+        formatAmount,
         invoices,
         customers,
         selectedInvoice,

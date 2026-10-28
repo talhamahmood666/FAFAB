@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { useErp } from '../../context/ErpContext';
 import { UserRole } from '../../types/erp';
+import { SupportedCurrency, DEFAULT_CURRENCIES } from '../../utils/currency';
 
 interface HeaderProps {
   onOpenNewInvoice: () => void;
@@ -23,7 +24,9 @@ export const Header: React.FC<HeaderProps> = ({ onOpenNewInvoice, onOpenNewExpen
     setCurrentRole, 
     globalSearch, 
     setGlobalSearch,
-    companyProfile 
+    companyProfile,
+    selectedCurrency,
+    setSelectedCurrency
   } = useErp();
 
   return (
@@ -68,7 +71,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenNewInvoice, onOpenNewExpen
           </div>
         </div>
 
-        {/* Right: Actions, Fiscal Year & Role Selector */}
+        {/* Right: Actions, Currency Switcher & Role Selector */}
         <div className="flex items-center space-x-2 sm:space-x-3">
           {/* Quick Buttons */}
           <button
@@ -88,6 +91,26 @@ export const Header: React.FC<HeaderProps> = ({ onOpenNewInvoice, onOpenNewExpen
             <PlusCircle className="w-4 h-4" />
             <span>Create Invoice</span>
           </button>
+
+          {/* Currency Switcher */}
+          <div className="flex items-center border-l border-slate-200 pl-3 space-x-1.5">
+            <Globe2 className="w-3.5 h-3.5 text-slate-500 hidden sm:inline" />
+            <select
+              value={selectedCurrency}
+              onChange={(e) => setSelectedCurrency(e.target.value as SupportedCurrency)}
+              className="text-xs bg-slate-100 hover:bg-slate-200 border border-slate-300 text-slate-800 rounded-lg px-2 py-1.5 font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+              aria-label="Select display currency"
+            >
+              {(Object.keys(DEFAULT_CURRENCIES) as SupportedCurrency[]).map((code) => {
+                const info = DEFAULT_CURRENCIES[code];
+                return (
+                  <option key={code} value={code}>
+                    {info.flag} {code} ({info.symbol})
+                  </option>
+                );
+              })}
+            </select>
+          </div>
 
           {/* Role Switcher */}
           <div className="flex items-center border-l border-slate-200 pl-3 space-x-1.5">

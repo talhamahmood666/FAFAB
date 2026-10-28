@@ -32,7 +32,9 @@ export const ExecutiveDashboard: React.FC<ExecutiveDashboardProps> = ({
     expenses, 
     bankAccounts, 
     setActiveModule, 
-    companyProfile 
+    companyProfile,
+    formatAmount,
+    selectedCurrency
   } = useErp();
 
   // Metrics
@@ -116,12 +118,12 @@ export const ExecutiveDashboard: React.FC<ExecutiveDashboardProps> = ({
             </div>
           </div>
           <div className="mt-3">
-            <div className="text-2xl font-bold text-slate-900 tracking-tight">
-              {formatPKR(totalCollected)}
+            <div className="text-2xl font-bold text-slate-900 tracking-tight font-mono">
+              {formatAmount(totalCollected)}
             </div>
             <div className="flex items-center space-x-1.5 mt-1 text-xs text-slate-500">
               <span>Billed Total:</span>
-              <span className="font-semibold text-slate-700">{formatPKR(totalInvoiced)}</span>
+              <span className="font-semibold text-slate-700 font-mono">{formatAmount(totalInvoiced)}</span>
             </div>
           </div>
         </div>
@@ -135,8 +137,8 @@ export const ExecutiveDashboard: React.FC<ExecutiveDashboardProps> = ({
             </div>
           </div>
           <div className="mt-3">
-            <div className="text-2xl font-bold text-slate-900 tracking-tight">
-              {formatPKR(totalExpenses)}
+            <div className="text-2xl font-bold text-slate-900 tracking-tight font-mono">
+              {formatAmount(totalExpenses)}
             </div>
             <div className="flex items-center space-x-1.5 mt-1 text-xs text-slate-500">
               <span>Bahria Town Rent, LESCO, Cloud</span>
@@ -153,8 +155,8 @@ export const ExecutiveDashboard: React.FC<ExecutiveDashboardProps> = ({
             </div>
           </div>
           <div className="mt-3">
-            <div className={`text-2xl font-bold tracking-tight ${netOperatingProfit >= 0 ? 'text-emerald-700' : 'text-rose-600'}`}>
-              {formatPKR(netOperatingProfit)}
+            <div className={`text-2xl font-bold tracking-tight font-mono ${netOperatingProfit >= 0 ? 'text-emerald-700' : 'text-rose-600'}`}>
+              {formatAmount(netOperatingProfit)}
             </div>
             <div className="flex items-center space-x-1.5 mt-1 text-xs text-emerald-600 font-medium">
               <span>Healthy operating margin</span>
@@ -171,8 +173,8 @@ export const ExecutiveDashboard: React.FC<ExecutiveDashboardProps> = ({
             </div>
           </div>
           <div className="mt-3">
-            <div className="text-2xl font-bold text-slate-900 tracking-tight">
-              {formatPKR(totalBankLiquidity)}
+            <div className="text-2xl font-bold text-slate-900 tracking-tight font-mono">
+              {formatAmount(totalBankLiquidity)}
             </div>
             <div className="flex items-center space-x-1.5 mt-1 text-xs text-slate-500">
               <span>Meezan Bank + HBL + Vault</span>
@@ -226,12 +228,12 @@ export const ExecutiveDashboard: React.FC<ExecutiveDashboardProps> = ({
                       <div 
                         style={{ height: `${Math.max(4, heightPct)}%` }} 
                         className="w-5 bg-emerald-600 rounded-t transition-all hover:bg-emerald-500" 
-                        title={`Revenue: ${formatPKR(m.revenue)}`}
+                        title={`Revenue: ${formatAmount(m.revenue)}`}
                       />
                       <div 
                         style={{ height: `${Math.max(4, outflowPct)}%` }} 
                         className="w-3.5 bg-rose-400 rounded-t transition-all hover:bg-rose-500" 
-                        title={`Outflow: ${formatPKR(m.expenses + m.payroll)}`}
+                        title={`Outflow: ${formatAmount(m.expenses + m.payroll)}`}
                       />
                     </div>
                     <span className="text-[11px] font-bold text-slate-700">{m.month}</span>
@@ -253,7 +255,7 @@ export const ExecutiveDashboard: React.FC<ExecutiveDashboardProps> = ({
             <div>
               <h3 className="text-sm font-bold text-amber-900">Punjab Tax Compliance Advisory</h3>
               <p className="text-xs text-amber-800 mt-1">
-                PRA Monthly Return (PST on Services) is due by the 15th of each calendar month. Current month accrued Output Tax liability is <strong className="font-semibold">{formatPKR(praOutputTaxTotal)}</strong>.
+                PRA Monthly Return (PST on Services) is due by the 15th of each calendar month. Current month accrued Output Tax liability is <strong className="font-semibold font-mono">{formatAmount(praOutputTaxTotal)}</strong>.
               </p>
               <div className="mt-3 flex items-center space-x-3">
                 <button
@@ -289,7 +291,7 @@ export const ExecutiveDashboard: React.FC<ExecutiveDashboardProps> = ({
             {bankAccounts.map(account => (
               <div key={account.id} className="p-3.5 rounded-lg bg-slate-50 border border-slate-200">
                 <div className="text-xs text-slate-500 font-medium truncate">{account.bankName}</div>
-                <div className="text-base font-bold text-slate-900 mt-1">{formatPKR(account.currentBalance)}</div>
+                <div className="text-base font-bold text-slate-900 mt-1 font-mono">{formatAmount(account.currentBalance)}</div>
                 <div className="text-[10px] text-slate-400 font-mono mt-1 truncate">
                   {account.iban}
                 </div>
@@ -303,16 +305,16 @@ export const ExecutiveDashboard: React.FC<ExecutiveDashboardProps> = ({
       <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
         <div className="p-5 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <h3 className="text-base font-bold text-slate-900">Recent Customer Invoices (PKR)</h3>
+            <h3 className="text-base font-bold text-slate-900">Recent Customer Invoices ({selectedCurrency})</h3>
             <p className="text-xs text-slate-500 mt-0.5">
               Includes 16% PRA GST and statutory withholding tax fields.
             </p>
           </div>
           <div className="flex items-center space-x-2">
             {overdueAmount > 0 && (
-              <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200 flex items-center gap-1">
+              <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200 flex items-center gap-1 font-mono">
                 <AlertCircle className="w-3.5 h-3.5" />
-                Overdue: {formatPKR(overdueAmount)}
+                Overdue: {formatAmount(overdueAmount)}
               </span>
             )}
             <button
@@ -364,14 +366,14 @@ export const ExecutiveDashboard: React.FC<ExecutiveDashboardProps> = ({
                     <div className="text-[11px] text-slate-400">Due: {inv.dueDate}</div>
                   </td>
                   <td className="py-3.5 px-4 text-slate-700 font-mono">
-                    {formatPKR(inv.praTaxAmount)}
+                    {formatAmount(inv.praTaxAmount)}
                   </td>
-                  <td className="py-3.5 px-4 font-bold text-slate-900">
-                    {formatPKR(inv.grandTotal)}
+                  <td className="py-3.5 px-4 font-bold text-slate-900 font-mono">
+                    {formatAmount(inv.grandTotal)}
                   </td>
-                  <td className="py-3.5 px-4 font-medium text-slate-700">
+                  <td className="py-3.5 px-4 font-medium text-slate-700 font-mono">
                     {inv.balanceDue > 0 ? (
-                      <span className="text-amber-700 font-semibold">{formatPKR(inv.balanceDue)}</span>
+                      <span className="text-amber-700 font-semibold">{formatAmount(inv.balanceDue)}</span>
                     ) : (
                       <span className="text-emerald-700 font-medium">Cleared</span>
                     )}

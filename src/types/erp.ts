@@ -3,6 +3,8 @@
  * Bahria Town, Lahore, Pakistan
  */
 
+import { SupportedCurrency } from '../utils/currency';
+
 export type UserRole = 'ADMIN' | 'ACCOUNTANT' | 'HR_MANAGER' | 'EMPLOYEE';
 
 export type TaxFilerStatus = 'ACTIVE_FILER' | 'NON_FILER' | 'EXEMPT';
@@ -103,6 +105,8 @@ export interface Invoice {
   grandTotal: number;    // Subtotal + PRA Tax - Discount
   amountPaid: number;
   balanceDue: number;
+  currency?: SupportedCurrency;
+  exchangeRate?: number;
   notes?: string;
   paymentTerms: string;
   createdAt: string;
@@ -115,6 +119,7 @@ export interface Expense {
   vendorName: string;
   vendorNtn?: string;
   date: string;
+  currency?: SupportedCurrency;
   amount: number;
   salesTaxPaid: number;
   whtDeducted: number;
