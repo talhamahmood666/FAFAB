@@ -13,7 +13,8 @@ import {
   X, 
   ShieldCheck, 
   MapPin, 
-  BadgeCheck 
+  BadgeCheck,
+  Settings 
 } from 'lucide-react';
 import { useErp } from '../../context/ErpContext';
 import { ActiveModule } from '../../types/erp';
@@ -26,7 +27,8 @@ export const Sidebar: React.FC = () => {
     setIsSidebarOpen, 
     invoices, 
     currentRole,
-    leaveRequests 
+    leaveRequests,
+    companyProfile 
   } = useErp();
 
   const pendingInvoicesCount = invoices.filter(i => i.status === 'SENT' || i.status === 'OVERDUE').length;
@@ -37,7 +39,7 @@ export const Sidebar: React.FC = () => {
     label: string;
     icon: React.ComponentType<{ className?: string }>;
     badge?: number;
-    section: 'finance' | 'hr';
+    section: 'finance' | 'hr' | 'system';
   }[] = [
     { id: 'dashboard', label: 'Executive Dashboard', icon: LayoutDashboard, section: 'finance' },
     { id: 'projections', label: 'Graphs & Projections', icon: PieChart, section: 'finance' },
@@ -52,6 +54,9 @@ export const Sidebar: React.FC = () => {
     { id: 'attendance', label: 'Attendance & Leaves', icon: CalendarDays, badge: pendingLeavesCount, section: 'hr' },
     { id: 'assets', label: 'Company Asset Fleet', icon: Laptop, section: 'hr' },
     { id: 'payroll', label: 'Statutory Payroll Engine', icon: Banknote, section: 'hr' },
+
+    // System Settings
+    { id: 'settings', label: 'Company & System Settings', icon: Settings, section: 'system' },
   ];
 
   return (
@@ -78,14 +83,14 @@ export const Sidebar: React.FC = () => {
             </div>
             <div>
               <div className="flex items-center space-x-1.5">
-                <span className="font-bold text-base tracking-tight text-white">FAFAB Limited</span>
+                <span className="font-bold text-base tracking-tight text-white truncate max-w-[140px]">{companyProfile.name}</span>
                 <span className="px-1.5 py-0.5 text-[10px] font-semibold bg-emerald-500/20 text-emerald-300 rounded border border-emerald-500/30">
                   ERP
                 </span>
               </div>
               <div className="flex items-center text-xs text-slate-400 space-x-1">
                 <MapPin className="w-3 h-3 text-emerald-400 shrink-0" />
-                <span className="truncate">Bahria Town, Lahore</span>
+                <span className="truncate">{companyProfile.city || 'Bahria Town, Lahore'}</span>
               </div>
             </div>
           </div>
@@ -102,13 +107,13 @@ export const Sidebar: React.FC = () => {
         {/* Pakistani Tax Compliance Strip */}
         <div className="mx-4 mt-3 px-3 py-2 rounded-lg bg-slate-800/60 border border-slate-700/60 flex items-center justify-between text-xs text-slate-300">
           <div className="flex items-center space-x-2">
-            <ShieldCheck className="w-4 h-4 text-emerald-400" />
-            <div>
-              <div className="text-[11px] font-semibold text-slate-200">FBR, PRA & EOBI Compliant</div>
-              <div className="text-[10px] text-slate-400 font-mono">NTN: 8943210-7 • SECP</div>
+            <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
+            <div className="min-w-0">
+              <div className="text-[11px] font-semibold text-slate-200">FBR & PRA Compliant</div>
+              <div className="text-[10px] text-slate-400 font-mono truncate">NTN: {companyProfile.ntn || 'Not Set'}</div>
             </div>
           </div>
-          <div className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+          <div className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
         </div>
 
         {/* Navigation Groups */}
@@ -196,6 +201,39 @@ export const Sidebar: React.FC = () => {
                         {item.badge}
                       </span>
                     )}
+                  </button>
+                );
+              })}
+            </nav>
+          </div>
+
+          {/* System Settings Section */}
+          <div>
+            <div className="px-3 mb-2 text-[11px] font-bold tracking-wider text-slate-400 uppercase">
+              Configuration
+            </div>
+            <nav className="space-y-1">
+              {navItems.filter(item => item.section === 'system').map(item => {
+                const Icon = item.icon;
+                const isActive = activeModule === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => {
+                      setActiveModule(item.id);
+                      setIsSidebarOpen(false);
+                    }}
+                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
+                      isActive 
+                        ? 'bg-emerald-600 text-white shadow-md shadow-emerald-950/30' 
+                        : 'text-slate-300 hover:text-white hover:bg-slate-800/80'
+                    }`}
+                  >
+                    <div className="flex items-center space-x-3">
+                      <Icon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-slate-400'}`} />
+                      <span>{item.label}</span>
+                    </div>
                   </button>
                 );
               })}

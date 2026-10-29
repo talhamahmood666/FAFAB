@@ -19,6 +19,7 @@ import { EmployeeDirectoryModule } from './components/hr/EmployeeDirectoryModule
 import { AttendanceAndLeavesModule } from './components/hr/AttendanceAndLeavesModule';
 import { AssetManagementModule } from './components/hr/AssetManagementModule';
 import { PayrollModule } from './components/payroll/PayrollModule';
+import { SettingsModule } from './components/settings/SettingsModule';
 import { Invoice } from './types/erp';
 
 const AppContent: React.FC = () => {
@@ -110,6 +111,11 @@ const AppContent: React.FC = () => {
           {/* Module 4: Statutory Payroll Engine */}
           {activeModule === 'payroll' && (
             <PayrollModule />
+          )}
+
+          {/* System & Company Settings */}
+          {activeModule === 'settings' && (
+            <SettingsModule />
           )}
         </main>
       </div>

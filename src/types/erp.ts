@@ -297,4 +297,5 @@ export type ActiveModule =
   | 'payroll' 
   | 'attendance' 
   | 'leaves' 
-  | 'assets';
+  | 'assets'
+  | 'settings';

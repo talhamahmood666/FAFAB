@@ -24,13 +24,13 @@ export const ExpensesModule: React.FC<ExpensesModuleProps> = ({
   isCreateOpen,
   setIsCreateOpen,
 }) => {
-  const { expenses, addExpense, deleteExpense } = useErp();
+  const { expenses, addExpense, deleteExpense, expenseCategories } = useErp();
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('ALL');
 
   // Form State
   const [description, setDescription] = useState('');
-  const [category, setCategory] = useState('Office Rent & Society Maintenance');
+  const [category, setCategory] = useState(expenseCategories[0] || 'Office Rent & Society Maintenance');
   const [vendorName, setVendorName] = useState('');
   const [vendorNtn, setVendorNtn] = useState('');
   const [amount, setAmount] = useState<number>(0);
@@ -39,16 +39,7 @@ export const ExpensesModule: React.FC<ExpensesModuleProps> = ({
   const [referenceNo, setReferenceNo] = useState('');
   const [receiptUrl, setReceiptUrl] = useState('');
 
-  const categories = [
-    'ALL',
-    'Office Rent & Society Maintenance',
-    'Electricity & Utilities',
-    'Internet & Communications',
-    'Cloud Hosting & Software Subscriptions',
-    'Fleet Fuel & Local Logistics',
-    'Staff Refreshments & Kitchen Pantry',
-    'Legal & Audit Fees',
-  ];
+  const categories = ['ALL', ...expenseCategories];
 
   const handleCreateExpense = (e: React.FormEvent) => {
     e.preventDefault();

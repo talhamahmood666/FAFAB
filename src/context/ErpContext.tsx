@@ -60,6 +60,13 @@ interface ErpContextType {
 
   // Company Profile
   companyProfile: CompanyProfile;
+  updateCompanyProfile: (profile: Partial<CompanyProfile>) => void;
+
+  // Expense Categories
+  expenseCategories: string[];
+  addExpenseCategory: (category: string) => void;
+  renameExpenseCategory: (oldCategory: string, newCategory: string) => void;
+  deleteExpenseCategory: (category: string) => void;
 
   // Invoicing & Customers
   invoices: Invoice[];
@@ -118,7 +125,58 @@ export const ErpProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [currentRole, setCurrentRole] = useState<UserRole>('ADMIN');
   const [activeModule, setActiveModule] = useState<ActiveModule>('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [companyProfile] = useState<CompanyProfile>(companyProfileData);
+  // Company Profile State
+  const [companyProfile, setCompanyProfile] = useState<CompanyProfile>(() => {
+    const saved = localStorage.getItem('fafab_company_profile');
+    return saved ? JSON.parse(saved) : companyProfileData;
+  });
+
+  useEffect(() => {
+    localStorage.setItem('fafab_company_profile', JSON.stringify(companyProfile));
+  }, [companyProfile]);
+
+  const updateCompanyProfile = (updated: Partial<CompanyProfile>) => {
+    setCompanyProfile(prev => ({ ...prev, ...updated }));
+  };
+
+  // Expense Categories State
+  const defaultCategories = [
+    'Office Rent & Society Maintenance',
+    'Electricity & Utilities',
+    'Internet & Communications',
+    'Cloud Hosting & Software Subscriptions',
+    'Fleet Fuel & Local Logistics',
+    'Staff Refreshments & Kitchen Pantry',
+    'Legal & Audit Fees',
+    'Marketing & Advertising',
+    'Office Supplies & Stationery',
+  ];
+
+  const [expenseCategories, setExpenseCategories] = useState<string[]>(() => {
+    const saved = localStorage.getItem('fafab_expense_categories');
+    return saved ? JSON.parse(saved) : defaultCategories;
+  });
+
+  useEffect(() => {
+    localStorage.setItem('fafab_expense_categories', JSON.stringify(expenseCategories));
+  }, [expenseCategories]);
+
+  const addExpenseCategory = (category: string) => {
+    const trimmed = category.trim();
+    if (!trimmed || expenseCategories.includes(trimmed)) return;
+    setExpenseCategories(prev => [...prev, trimmed]);
+  };
+
+  const renameExpenseCategory = (oldCategory: string, newCategory: string) => {
+    const trimmed = newCategory.trim();
+    if (!trimmed || oldCategory === trimmed) return;
+    setExpenseCategories(prev => prev.map(c => c === oldCategory ? trimmed : c));
+    setExpenses(prev => prev.map(e => e.category === oldCategory ? { ...e, category: trimmed } : e));
+  };
+
+  const deleteExpenseCategory = (category: string) => {
+    setExpenseCategories(prev => prev.filter(c => c !== category));
+  };
 
   // Multi-Currency State
   const [selectedCurrency, setSelectedCurrency] = useState<SupportedCurrency>(() => {
@@ -580,6 +638,11 @@ export const ErpProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         isSidebarOpen,
         setIsSidebarOpen,
         companyProfile,
+        updateCompanyProfile,
+        expenseCategories,
+        addExpenseCategory,
+        renameExpenseCategory,
+        deleteExpenseCategory,
         selectedCurrency,
         setSelectedCurrency,
         customExchangeRates,
