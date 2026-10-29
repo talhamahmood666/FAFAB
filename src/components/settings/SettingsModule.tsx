@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { 
   Building2, 
   Receipt, 
@@ -16,7 +16,11 @@ import {
   Mail, 
   MapPin, 
   CheckCircle2, 
-  AlertCircle 
+  AlertCircle,
+  Download,
+  Upload,
+  Database,
+  RefreshCw
 } from 'lucide-react';
 import { useErp } from '../../context/ErpContext';
 import { SupportedCurrency, DEFAULT_CURRENCIES } from '../../utils/currency';
@@ -30,11 +34,21 @@ export const SettingsModule: React.FC = () => {
     renameExpenseCategory, 
     deleteExpenseCategory, 
     expenses,
+    invoices,
+    customers,
+    accounts,
+    bankAccounts,
+    bankTransactions,
+    employees,
+    attendances,
+    leaveRequests,
+    assets,
+    payrollPeriods,
     customExchangeRates,
     setExchangeRate
   } = useErp();
 
-  const [activeTab, setActiveTab] = useState<'profile' | 'categories' | 'currency'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'categories' | 'currency' | 'backup'>('profile');
 
   // Company Profile Form State
   const [profileForm, setProfileForm] = useState({ ...companyProfile });
@@ -53,6 +67,10 @@ export const SettingsModule: React.FC = () => {
     EUR: customExchangeRates.EUR || DEFAULT_CURRENCIES.EUR.rateToPKR,
   });
   const [currencySuccessMessage, setCurrencySuccessMessage] = useState('');
+
+  // Backup & Restore State
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [backupMessage, setBackupMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
   // Handle Profile Submit
   const handleSaveProfile = (e: React.FormEvent) => {
@@ -114,6 +132,101 @@ export const SettingsModule: React.FC = () => {
     setTimeout(() => setCurrencySuccessMessage(''), 4000);
   };
 
+  // Export Complete ERP JSON Data
+  const handleExportData = () => {
+    const fullData = {
+      version: '2.0',
+      exportedAt: new Date().toISOString(),
+      companyProfile,
+      expenseCategories,
+      customExchangeRates,
+      invoices,
+      customers,
+      expenses,
+      accounts,
+      bankAccounts,
+      bankTransactions,
+      employees,
+      attendances,
+      leaveRequests,
+      assets,
+      payrollPeriods
+    };
+
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(fullData, null, 2));
+    const downloadAnchor = document.createElement('a');
+    const filename = `FAFAB_ERP_Backup_${new Date().toISOString().slice(0, 10)}.json`;
+    downloadAnchor.setAttribute("href", dataStr);
+    downloadAnchor.setAttribute("download", filename);
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    downloadAnchor.remove();
+
+    setBackupMessage({ text: `Backup file "${filename}" downloaded successfully!`, type: 'success' });
+    setTimeout(() => setBackupMessage(null), 4000);
+  };
+
+  // Import ERP JSON Data
+  const handleImportFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const json = JSON.parse(event.target?.result as string);
+        if (!json || typeof json !== 'object') {
+          throw new Error('Invalid JSON format');
+        }
+
+        if (json.companyProfile) localStorage.setItem('fafab_company_profile', JSON.stringify(json.companyProfile));
+        if (json.expenseCategories) localStorage.setItem('fafab_expense_categories', JSON.stringify(json.expenseCategories));
+        if (json.customExchangeRates) localStorage.setItem('fafab_exchange_rates', JSON.stringify(json.customExchangeRates));
+        if (json.invoices) localStorage.setItem('fafab_invoices', JSON.stringify(json.invoices));
+        if (json.customers) localStorage.setItem('fafab_customers', JSON.stringify(json.customers));
+        if (json.expenses) localStorage.setItem('fafab_expenses', JSON.stringify(json.expenses));
+        if (json.accounts) localStorage.setItem('fafab_accounts', JSON.stringify(json.accounts));
+        if (json.bankAccounts) localStorage.setItem('fafab_bank_accounts', JSON.stringify(json.bankAccounts));
+        if (json.bankTransactions) localStorage.setItem('fafab_bank_txs', JSON.stringify(json.bankTransactions));
+        if (json.employees) localStorage.setItem('fafab_employees', JSON.stringify(json.employees));
+        if (json.attendances) localStorage.setItem('fafab_attendances', JSON.stringify(json.attendances));
+        if (json.leaveRequests) localStorage.setItem('fafab_leaves', JSON.stringify(json.leaveRequests));
+        if (json.assets) localStorage.setItem('fafab_assets', JSON.stringify(json.assets));
+        if (json.payrollPeriods) localStorage.setItem('fafab_payroll_periods', JSON.stringify(json.payrollPeriods));
+
+        setBackupMessage({ text: 'Data imported successfully! Reloading system...', type: 'success' });
+        setTimeout(() => {
+          window.location.reload();
+        }, 1500);
+      } catch (err) {
+        setBackupMessage({ text: 'Error importing backup file: File format is not valid FAFAB ERP data.', type: 'error' });
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  // Handle Reset Data
+  const handleResetData = () => {
+    if (confirm('Are you sure you want to reset all data to system defaults? This will erase custom records saved in this browser.')) {
+      localStorage.removeItem('fafab_db_version');
+      localStorage.removeItem('fafab_company_profile');
+      localStorage.removeItem('fafab_expense_categories');
+      localStorage.removeItem('fafab_exchange_rates');
+      localStorage.removeItem('fafab_invoices');
+      localStorage.removeItem('fafab_customers');
+      localStorage.removeItem('fafab_expenses');
+      localStorage.removeItem('fafab_accounts');
+      localStorage.removeItem('fafab_bank_accounts');
+      localStorage.removeItem('fafab_bank_txs');
+      localStorage.removeItem('fafab_employees');
+      localStorage.removeItem('fafab_attendances');
+      localStorage.removeItem('fafab_leaves');
+      localStorage.removeItem('fafab_assets');
+      localStorage.removeItem('fafab_payroll_periods');
+      window.location.reload();
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -123,12 +236,12 @@ export const SettingsModule: React.FC = () => {
           System & Company Settings
         </h2>
         <p className="text-xs text-slate-500 mt-1">
-          Manage corporate registration (NTN/STRN), expense categories, bank transfer instructions, and exchange rates.
+          Manage corporate registration (NTN/STRN), expense categories, bank transfer instructions, exchange rates, and data backups.
         </p>
       </div>
 
       {/* Tabs Bar */}
-      <div className="flex border-b border-slate-200 bg-white rounded-xl p-1.5 shadow-xs gap-1">
+      <div className="flex flex-wrap border-b border-slate-200 bg-white rounded-xl p-1.5 shadow-xs gap-1">
         <button
           type="button"
           onClick={() => setActiveTab('profile')}
@@ -166,6 +279,19 @@ export const SettingsModule: React.FC = () => {
         >
           <DollarSign className="w-4 h-4" />
           <span>Multi-Currency Rates</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('backup')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
+            activeTab === 'backup'
+              ? 'bg-emerald-600 text-white shadow-xs'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+          }`}
+        >
+          <Database className="w-4 h-4" />
+          <span>Data Backup & Restore</span>
         </button>
       </div>
 
@@ -655,6 +781,115 @@ export const SettingsModule: React.FC = () => {
           </div>
         </form>
       )}
+
+      {/* ======================================================================= */}
+      {/* TAB 4: DATA BACKUP & RESTORE                                           */}
+      {/* ======================================================================= */}
+      {activeTab === 'backup' && (
+        <div className="space-y-6">
+          {backupMessage && (
+            <div className={`p-3.5 rounded-xl text-xs font-medium flex items-center gap-2 ${
+              backupMessage.type === 'success' 
+                ? 'bg-emerald-50 border border-emerald-200 text-emerald-800' 
+                : 'bg-rose-50 border border-rose-200 text-rose-800'
+            }`}>
+              {backupMessage.type === 'success' ? (
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+              ) : (
+                <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+              )}
+              <span>{backupMessage.text}</span>
+            </div>
+          )}
+
+          {/* Export Data */}
+          <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-4">
+            <div className="flex items-center gap-3 border-b border-slate-100 pb-3">
+              <Download className="w-5 h-5 text-emerald-600" />
+              <div>
+                <h3 className="font-bold text-slate-900 text-sm">Export System Backup (JSON)</h3>
+                <p className="text-[11px] text-slate-500">Download a full offline snapshot of all company records, invoices, HR files, and accounting entries.</p>
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-xs">
+              <div className="text-slate-600 space-y-1">
+                <p>• Backup contains: Invoices ({invoices.length}), Vouchers ({expenses.length}), Employees ({employees.length}), Bank Txs ({bankTransactions.length}), Company Settings.</p>
+                <p>• Can be safely imported into another computer, browser, or shared with colleagues.</p>
+              </div>
+              <button
+                type="button"
+                onClick={handleExportData}
+                className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-xs flex items-center gap-2 transition-colors cursor-pointer shrink-0"
+              >
+                <Download className="w-4 h-4" />
+                <span>Export ERP Backup File</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Import Data */}
+          <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-4">
+            <div className="flex items-center gap-3 border-b border-slate-100 pb-3">
+              <Upload className="w-5 h-5 text-indigo-600" />
+              <div>
+                <h3 className="font-bold text-slate-900 text-sm">Import & Restore Data</h3>
+                <p className="text-[11px] text-slate-500">Restore or transfer data from a previously exported FAFAB ERP JSON file.</p>
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-xs">
+              <div className="text-slate-600 space-y-1">
+                <p>• Restores all invoices, employee files, tax numbers, and financial ledgers onto this browser.</p>
+                <p>• Warning: Importing will replace existing data in this browser with the backup file contents.</p>
+              </div>
+
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleImportFileChange}
+                accept=".json"
+                className="hidden"
+              />
+
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-xs flex items-center gap-2 transition-colors cursor-pointer shrink-0"
+              >
+                <Upload className="w-4 h-4" />
+                <span>Select & Import JSON Backup</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Reset System */}
+          <div className="bg-white rounded-2xl border border-rose-200 p-6 shadow-xs space-y-4">
+            <div className="flex items-center gap-3 border-b border-rose-100 pb-3">
+              <RefreshCw className="w-5 h-5 text-rose-600" />
+              <div>
+                <h3 className="font-bold text-slate-900 text-sm text-rose-900">Reset to Initial Seed State</h3>
+                <p className="text-[11px] text-slate-500">Wipe local browser changes and restore default FAFAB Limited sample records.</p>
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-xs">
+              <p className="text-slate-600">
+                Use this if you wish to start fresh with clean initial seed data for FAFAB Limited Lahore.
+              </p>
+
+              <button
+                type="button"
+                onClick={handleResetData}
+                className="px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold border border-rose-200 rounded-xl transition-colors cursor-pointer shrink-0"
+              >
+                Reset Application Data
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
+
