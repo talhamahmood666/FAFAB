@@ -20,10 +20,17 @@ import {
   Download,
   Upload,
   Database,
-  RefreshCw
+  RefreshCw,
+  Cloud,
+  Copy,
+  ExternalLink,
+  Server,
+  Loader2
 } from 'lucide-react';
 import { useErp } from '../../context/ErpContext';
 import { SupportedCurrency, DEFAULT_CURRENCIES } from '../../utils/currency';
+import { getSupabaseConfig } from '../../lib/supabase';
+import { testSupabaseConnection } from '../../services/supabaseService';
 
 export const SettingsModule: React.FC = () => {
   const { 
@@ -45,10 +52,21 @@ export const SettingsModule: React.FC = () => {
     assets,
     payrollPeriods,
     customExchangeRates,
-    setExchangeRate
+    setExchangeRate,
+    isSupabaseActive,
+    isSupabaseSyncing,
+    syncToSupabase,
+    pullFromSupabase
   } = useErp();
 
-  const [activeTab, setActiveTab] = useState<'profile' | 'categories' | 'currency' | 'backup'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'categories' | 'currency' | 'backup' | 'supabase'>('profile');
+
+  // Supabase UI state
+  const [supabaseTestStatus, setSupabaseTestStatus] = useState<{ loading: boolean; result?: { success: boolean; message: string } }>({ loading: false });
+  const [supabaseActionStatus, setSupabaseActionStatus] = useState<{ loading: boolean; message?: string; isError?: boolean }>({ loading: false });
+  const [copiedSql, setCopiedSql] = useState(false);
+  const [showSqlPreview, setShowSqlPreview] = useState(false);
+  const supabaseConfig = getSupabaseConfig();
 
   // Company Profile Form State
   const [profileForm, setProfileForm] = useState({ ...companyProfile });
@@ -292,6 +310,24 @@ export const SettingsModule: React.FC = () => {
         >
           <Database className="w-4 h-4" />
           <span>Data Backup & Restore</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('supabase')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-colors cursor-pointer relative ${
+            activeTab === 'supabase'
+              ? 'bg-emerald-600 text-white shadow-xs'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+          }`}
+        >
+          <Cloud className="w-4 h-4" />
+          <span>Supabase Cloud Sync</span>
+          {isSupabaseActive ? (
+            <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+          ) : (
+            <span className="px-1.5 py-0.2 bg-amber-100 text-amber-800 text-[9px] font-bold rounded">Setup</span>
+          )}
         </button>
       </div>
 
@@ -889,7 +925,391 @@ export const SettingsModule: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* ======================================================================= */}
+      {/* TAB 5: SUPABASE CLOUD DATABASE & VERCEL INTEGRATION                    */}
+      {/* ======================================================================= */}
+      {activeTab === 'supabase' && (
+        <div className="space-y-6">
+          {/* Status Banner */}
+          <div className={`p-5 rounded-2xl border shadow-xs transition-all ${
+            isSupabaseActive 
+              ? 'bg-emerald-50/70 border-emerald-200 text-emerald-950' 
+              : 'bg-amber-50/70 border-amber-200 text-amber-950'
+          }`}>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+                  isSupabaseActive ? 'bg-emerald-600 text-white' : 'bg-amber-500 text-white'
+                }`}>
+                  <Cloud className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-bold text-sm">
+                      {isSupabaseActive ? 'Supabase Cloud Database: Active' : 'Supabase Cloud Database: Local Offline Mode'}
+                    </h3>
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                      isSupabaseActive ? 'bg-emerald-200 text-emerald-800' : 'bg-amber-200 text-amber-900'
+                    }`}>
+                      {isSupabaseActive ? 'CONNECTED' : 'NOT CONFIGURED'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-600 mt-0.5">
+                    {isSupabaseActive
+                      ? `Syncing live with Supabase project (${supabaseConfig.url}). Invoices and ERP data persist centrally.`
+                      : 'Running in browser localStorage mode. Connect Supabase to persist and sync records across all devices and team members on Vercel.'}
+                  </p>
+                </div>
+              </div>
+
+              {isSupabaseActive && (
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    type="button"
+                    disabled={supabaseTestStatus.loading}
+                    onClick={async () => {
+                      setSupabaseTestStatus({ loading: true });
+                      const res = await testSupabaseConnection();
+                      setSupabaseTestStatus({ loading: false, result: res });
+                    }}
+                    className="px-3 py-1.5 bg-white border border-emerald-300 hover:bg-emerald-50 text-emerald-800 font-semibold text-xs rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer"
+                  >
+                    {supabaseTestStatus.loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Server className="w-3.5 h-3.5" />}
+                    <span>Test Connection</span>
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Test result banner */}
+            {supabaseTestStatus.result && (
+              <div className={`mt-3 p-3 rounded-lg text-xs font-medium flex items-center gap-2 ${
+                supabaseTestStatus.result.success
+                  ? 'bg-emerald-100 text-emerald-900 border border-emerald-300'
+                  : 'bg-rose-100 text-rose-900 border border-rose-300'
+              }`}>
+                {supabaseTestStatus.result.success ? (
+                  <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0" />
+                ) : (
+                  <AlertCircle className="w-4 h-4 text-rose-700 shrink-0" />
+                )}
+                <span>{supabaseTestStatus.result.message}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Sync Actions (if active) */}
+          {isSupabaseActive && (
+            <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-4">
+              <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
+                <RefreshCw className="w-5 h-5 text-emerald-600" />
+                <div>
+                  <h3 className="font-bold text-slate-900 text-sm">Cloud Synchronization Controls</h3>
+                  <p className="text-[11px] text-slate-500">Migrate or pull corporate ERP records between this browser and Supabase PostgreSQL.</p>
+                </div>
+              </div>
+
+              {supabaseActionStatus.message && (
+                <div className={`p-3 rounded-xl text-xs font-medium flex items-center gap-2 ${
+                  supabaseActionStatus.isError 
+                    ? 'bg-rose-50 border border-rose-200 text-rose-800' 
+                    : 'bg-emerald-50 border border-emerald-200 text-emerald-800'
+                }`}>
+                  {supabaseActionStatus.isError ? (
+                    <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                  ) : (
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  )}
+                  <span>{supabaseActionStatus.message}</span>
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
+                  <div>
+                    <h4 className="font-bold text-slate-900">Push Local Data to Supabase</h4>
+                    <p className="text-slate-500 text-[11px] mt-1">
+                      Upload all {invoices.length} invoices, {expenses.length} vouchers, {employees.length} employee records, and company settings from this browser to your Supabase tables.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    disabled={isSupabaseSyncing}
+                    onClick={async () => {
+                      setSupabaseActionStatus({ loading: true });
+                      const res = await syncToSupabase();
+                      setSupabaseActionStatus({ loading: false, message: res.message, isError: !res.success });
+                    }}
+                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg shadow-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+                  >
+                    {isSupabaseSyncing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+                    <span>Push All to Supabase</span>
+                  </button>
+                </div>
+
+                <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
+                  <div>
+                    <h4 className="font-bold text-slate-900">Pull Cloud Data from Supabase</h4>
+                    <p className="text-slate-500 text-[11px] mt-1">
+                      Fetch and replace local records with the latest live data stored in your central Supabase PostgreSQL database.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    disabled={isSupabaseSyncing}
+                    onClick={async () => {
+                      setSupabaseActionStatus({ loading: true });
+                      const res = await pullFromSupabase();
+                      setSupabaseActionStatus({ loading: false, message: res.message, isError: !res.success });
+                    }}
+                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg shadow-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+                  >
+                    {isSupabaseSyncing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+                    <span>Pull Latest from Supabase</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 3-Step Supabase Setup Guide */}
+          <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-5">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div>
+                <h3 className="font-bold text-slate-900 text-sm">How to Connect Supabase with FAFAB ERP on Vercel</h3>
+                <p className="text-[11px] text-slate-500">Takes less than 3 minutes. Your app code is already fully configured for Supabase.</p>
+              </div>
+              <a
+                href="https://supabase.com/dashboard"
+                target="_blank"
+                rel="noreferrer"
+                className="text-xs font-semibold text-emerald-600 hover:text-emerald-700 flex items-center gap-1"
+              >
+                <span>Open Supabase</span>
+                <ExternalLink className="w-3.5 h-3.5" />
+              </a>
+            </div>
+
+            <div className="space-y-4 text-xs">
+              {/* Step 1 */}
+              <div className="flex gap-3">
+                <span className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-800 font-bold flex items-center justify-center shrink-0">1</span>
+                <div className="space-y-1">
+                  <h4 className="font-bold text-slate-900">Create a Project on Supabase</h4>
+                  <p className="text-slate-600">
+                    Sign in to <a href="https://supabase.com" target="_blank" rel="noreferrer" className="text-emerald-600 underline font-semibold">supabase.com</a> (free tier available) and click <strong>New project</strong>. Name it e.g. <code className="bg-slate-100 px-1 py-0.5 rounded text-emerald-700 font-mono">fafab-erp</code>.
+                  </p>
+                </div>
+              </div>
+
+              {/* Step 2 */}
+              <div className="flex gap-3">
+                <span className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-800 font-bold flex items-center justify-center shrink-0">2</span>
+                <div className="space-y-2 flex-1">
+                  <h4 className="font-bold text-slate-900">Run the Database Schema in Supabase SQL Editor</h4>
+                  <p className="text-slate-600">
+                    In your Supabase project dashboard, open the <strong>SQL Editor</strong> tab on the left, click <strong>New Query</strong>, paste our schema script, and click <strong>Run</strong>.
+                  </p>
+                  <div className="flex flex-wrap items-center gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const sql = `-- ============================================================
+-- FAFAB LIMITED ERP — Supabase PostgreSQL Database Schema
+-- Run in Supabase SQL Editor
+-- ============================================================
+CREATE TABLE IF NOT EXISTS system_settings (
+    key TEXT PRIMARY KEY,
+    value JSONB NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+ALTER TABLE system_settings ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Public full access to system_settings" ON system_settings;
+CREATE POLICY "Public full access to system_settings" ON system_settings FOR ALL USING (true) WITH CHECK (true);
+
+CREATE TABLE IF NOT EXISTS invoices (
+    id TEXT PRIMARY KEY,
+    invoice_number TEXT NOT NULL,
+    customer_id TEXT,
+    customer_name TEXT NOT NULL,
+    date TEXT NOT NULL,
+    due_date TEXT NOT NULL,
+    status TEXT NOT NULL,
+    currency TEXT DEFAULT 'PKR',
+    exchange_rate NUMERIC DEFAULT 1.0,
+    items JSONB DEFAULT '[]'::jsonb,
+    subtotal NUMERIC DEFAULT 0,
+    pra_tax_amount NUMERIC DEFAULT 0,
+    fbr_wh_tax_amount NUMERIC DEFAULT 0,
+    total_amount NUMERIC DEFAULT 0,
+    amount_paid NUMERIC DEFAULT 0,
+    balance_due NUMERIC DEFAULT 0,
+    payments JSONB DEFAULT '[]'::jsonb,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+ALTER TABLE invoices ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Public full access to invoices" ON invoices;
+CREATE POLICY "Public full access to invoices" ON invoices FOR ALL USING (true) WITH CHECK (true);
+
+CREATE TABLE IF NOT EXISTS customers (
+    id TEXT PRIMARY KEY,
+    customer_code TEXT NOT NULL,
+    name TEXT NOT NULL,
+    company TEXT,
+    ntn TEXT,
+    strn TEXT,
+    email TEXT,
+    phone TEXT,
+    address TEXT,
+    city TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+ALTER TABLE customers ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Public full access to customers" ON customers;
+CREATE POLICY "Public full access to customers" ON customers FOR ALL USING (true) WITH CHECK (true);
+
+CREATE TABLE IF NOT EXISTS expenses (
+    id TEXT PRIMARY KEY,
+    expense_number TEXT NOT NULL,
+    title TEXT NOT NULL,
+    category TEXT NOT NULL,
+    amount NUMERIC NOT NULL,
+    date TEXT NOT NULL,
+    payment_method TEXT,
+    paid_to TEXT,
+    tax_deducted NUMERIC DEFAULT 0,
+    description TEXT,
+    status TEXT DEFAULT 'APPROVED',
+    reference_number TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+ALTER TABLE expenses ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Public full access to expenses" ON expenses;
+CREATE POLICY "Public full access to expenses" ON expenses FOR ALL USING (true) WITH CHECK (true);
+
+CREATE TABLE IF NOT EXISTS employees (
+    id TEXT PRIMARY KEY,
+    employee_code TEXT NOT NULL,
+    first_name TEXT NOT NULL,
+    last_name TEXT NOT NULL,
+    email TEXT,
+    phone TEXT,
+    department TEXT,
+    designation TEXT,
+    joining_date TEXT,
+    basic_salary NUMERIC DEFAULT 0,
+    gross_salary NUMERIC DEFAULT 0,
+    allowances JSONB DEFAULT '{}'::jsonb,
+    deductions JSONB DEFAULT '{}'::jsonb,
+    bank_details JSONB DEFAULT '{}'::jsonb,
+    ntn TEXT,
+    cnic TEXT,
+    status TEXT DEFAULT 'ACTIVE',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+ALTER TABLE employees ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Public full access to employees" ON employees;
+CREATE POLICY "Public full access to employees" ON employees FOR ALL USING (true) WITH CHECK (true);
+
+CREATE TABLE IF NOT EXISTS bank_accounts (
+    id TEXT PRIMARY KEY,
+    bank_name TEXT NOT NULL,
+    account_title TEXT NOT NULL,
+    account_number TEXT NOT NULL,
+    iban TEXT,
+    branch TEXT,
+    current_balance NUMERIC DEFAULT 0,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+ALTER TABLE bank_accounts ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Public full access to bank_accounts" ON bank_accounts;
+CREATE POLICY "Public full access to bank_accounts" ON bank_accounts FOR ALL USING (true) WITH CHECK (true);
+
+CREATE TABLE IF NOT EXISTS bank_transactions (
+    id TEXT PRIMARY KEY,
+    account_id TEXT NOT NULL,
+    date TEXT NOT NULL,
+    type TEXT NOT NULL,
+    description TEXT,
+    amount NUMERIC NOT NULL,
+    balance_after NUMERIC NOT NULL,
+    reference_no TEXT,
+    status TEXT DEFAULT 'POSTED',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+ALTER TABLE bank_transactions ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Public full access to bank_transactions" ON bank_transactions;
+CREATE POLICY "Public full access to bank_transactions" ON bank_transactions FOR ALL USING (true) WITH CHECK (true);`;
+
+                        navigator.clipboard.writeText(sql);
+                        setCopiedSql(true);
+                        setTimeout(() => setCopiedSql(false), 3000);
+                      }}
+                      className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer"
+                    >
+                      {copiedSql ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                      <span>{copiedSql ? 'SQL Copied to Clipboard!' : 'Copy SQL Schema Script'}</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setShowSqlPreview(!showSqlPreview)}
+                      className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-lg transition-colors cursor-pointer"
+                    >
+                      {showSqlPreview ? 'Hide SQL Preview' : 'View SQL Script'}
+                    </button>
+                  </div>
+
+                  {showSqlPreview && (
+                    <div className="mt-2 p-3 bg-slate-900 text-emerald-400 font-mono text-[11px] rounded-xl overflow-x-auto max-h-48">
+                      <pre>{`-- Also saved in project root as /supabase_schema.sql
+CREATE TABLE IF NOT EXISTS system_settings (key TEXT PRIMARY KEY, value JSONB NOT NULL);
+CREATE TABLE IF NOT EXISTS invoices (id TEXT PRIMARY KEY, invoice_number TEXT, total_amount NUMERIC...);
+CREATE TABLE IF NOT EXISTS customers (id TEXT PRIMARY KEY, customer_code TEXT, name TEXT...);
+CREATE TABLE IF NOT EXISTS expenses (id TEXT PRIMARY KEY, expense_number TEXT, amount NUMERIC...);
+CREATE TABLE IF NOT EXISTS employees (id TEXT PRIMARY KEY, employee_code TEXT, first_name TEXT...);
+CREATE TABLE IF NOT EXISTS bank_accounts (id TEXT PRIMARY KEY, bank_name TEXT, current_balance NUMERIC...);
+CREATE TABLE IF NOT EXISTS bank_transactions (id TEXT PRIMARY KEY, account_id TEXT, amount NUMERIC...);`}</pre>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Step 3 */}
+              <div className="flex gap-3">
+                <span className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-800 font-bold flex items-center justify-center shrink-0">3</span>
+                <div className="space-y-2">
+                  <h4 className="font-bold text-slate-900">Add Environment Variables in Vercel</h4>
+                  <p className="text-slate-600">
+                    In your Supabase project, go to <strong>Project Settings</strong> &rarr; <strong>API</strong>. Copy your <strong>Project URL</strong> and <strong>anon / public key</strong>.
+                  </p>
+                  <p className="text-slate-600">
+                    Then in your <a href="https://vercel.com/dashboard" target="_blank" rel="noreferrer" className="text-emerald-600 underline font-semibold">Vercel Dashboard</a>:
+                  </p>
+                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 font-mono text-[11px] space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-500 font-sans">Variable 1:</span>
+                      <span className="text-emerald-700 font-bold">VITE_SUPABASE_URL</span>
+                      <span className="text-slate-400 text-[10px]">= https://xyzcompany.supabase.co</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-500 font-sans">Variable 2:</span>
+                      <span className="text-emerald-700 font-bold">VITE_SUPABASE_ANON_KEY</span>
+                      <span className="text-slate-400 text-[10px]">= eyJhbGciOi...</span>
+                    </div>
+                  </div>
+                  <p className="text-slate-500 text-[11px]">
+                    After adding both variables, trigger a <strong>Redeploy</strong> in Vercel. Once deployed, all devices and users accessing your domain will instantly write to and read from your live Supabase database!
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
+
 

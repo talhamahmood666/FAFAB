@@ -41,6 +41,8 @@ import {
   computeEmployeeMonthlyPayroll 
 } from '../utils/payrollCalculations';
 import { SupportedCurrency, DEFAULT_CURRENCIES, formatBasePKR } from '../utils/currency';
+import { isSupabaseConfigured } from '../lib/supabase';
+import { fetchAllFromSupabase, syncAllToSupabase } from '../services/supabaseService';
 
 interface ErpContextType {
   // Navigation & Role
@@ -117,6 +119,12 @@ interface ErpContextType {
   // Search & Global filter
   globalSearch: string;
   setGlobalSearch: (search: string) => void;
+
+  // Supabase Cloud Sync
+  isSupabaseActive: boolean;
+  isSupabaseSyncing: boolean;
+  syncToSupabase: () => Promise<{ success: boolean; message: string }>;
+  pullFromSupabase: () => Promise<{ success: boolean; message: string }>;
 }
 
 const ErpContext = createContext<ErpContextType | undefined>(undefined);
@@ -272,6 +280,91 @@ export const ErpProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const [selectedPayslip, setSelectedPayslip] = useState<PayrollRecord | null>(null);
   const [globalSearch, setGlobalSearch] = useState('');
+
+  // Supabase Cloud Sync State
+  const [isSupabaseSyncing, setIsSupabaseSyncing] = useState(false);
+  const isSupabaseActive = isSupabaseConfigured();
+
+  // Load from Supabase on startup if configured
+  useEffect(() => {
+    if (isSupabaseActive) {
+      setIsSupabaseSyncing(true);
+      fetchAllFromSupabase()
+        .then((remote) => {
+          if (remote) {
+            if (remote.companyProfile) setCompanyProfile(remote.companyProfile);
+            if (remote.expenseCategories && remote.expenseCategories.length > 0) setExpenseCategories(remote.expenseCategories);
+            if (remote.customExchangeRates) setCustomExchangeRates(remote.customExchangeRates as any);
+            if (remote.invoices && remote.invoices.length > 0) setInvoices(remote.invoices);
+            if (remote.customers && remote.customers.length > 0) setCustomers(remote.customers);
+            if (remote.expenses && remote.expenses.length > 0) setExpenses(remote.expenses);
+            if (remote.employees && remote.employees.length > 0) setEmployees(remote.employees);
+            if (remote.bankAccounts && remote.bankAccounts.length > 0) setBankAccounts(remote.bankAccounts);
+            if (remote.bankTransactions && remote.bankTransactions.length > 0) setBankTransactions(remote.bankTransactions);
+            if (remote.accounts && remote.accounts.length > 0) setAccounts(remote.accounts);
+            if (remote.attendances && remote.attendances.length > 0) setAttendances(remote.attendances);
+            if (remote.leaveRequests && remote.leaveRequests.length > 0) setLeaveRequests(remote.leaveRequests);
+            if (remote.assets && remote.assets.length > 0) setAssets(remote.assets);
+            if (remote.payrollPeriods && remote.payrollPeriods.length > 0) setPayrollPeriods(remote.payrollPeriods);
+          }
+        })
+        .catch((err) => console.warn('Supabase auto-fetch failed:', err))
+        .finally(() => setIsSupabaseSyncing(false));
+    }
+  }, [isSupabaseActive]);
+
+  const syncToSupabase = async () => {
+    setIsSupabaseSyncing(true);
+    try {
+      return await syncAllToSupabase({
+        companyProfile,
+        expenseCategories,
+        customExchangeRates,
+        invoices,
+        customers,
+        expenses,
+        accounts,
+        bankAccounts,
+        bankTransactions,
+        employees,
+        attendances,
+        leaveRequests,
+        assets,
+        payrollPeriods,
+      });
+    } finally {
+      setIsSupabaseSyncing(false);
+    }
+  };
+
+  const pullFromSupabase = async () => {
+    setIsSupabaseSyncing(true);
+    try {
+      const remote = await fetchAllFromSupabase();
+      if (!remote) {
+        return { success: false, message: 'Could not fetch data from Supabase. Verify table schema and network.' };
+      }
+      if (remote.companyProfile) setCompanyProfile(remote.companyProfile);
+      if (remote.expenseCategories && remote.expenseCategories.length > 0) setExpenseCategories(remote.expenseCategories);
+      if (remote.customExchangeRates) setCustomExchangeRates(remote.customExchangeRates as any);
+      if (remote.invoices && remote.invoices.length > 0) setInvoices(remote.invoices);
+      if (remote.customers && remote.customers.length > 0) setCustomers(remote.customers);
+      if (remote.expenses && remote.expenses.length > 0) setExpenses(remote.expenses);
+      if (remote.employees && remote.employees.length > 0) setEmployees(remote.employees);
+      if (remote.bankAccounts && remote.bankAccounts.length > 0) setBankAccounts(remote.bankAccounts);
+      if (remote.bankTransactions && remote.bankTransactions.length > 0) setBankTransactions(remote.bankTransactions);
+      if (remote.accounts && remote.accounts.length > 0) setAccounts(remote.accounts);
+      if (remote.attendances && remote.attendances.length > 0) setAttendances(remote.attendances);
+      if (remote.leaveRequests && remote.leaveRequests.length > 0) setLeaveRequests(remote.leaveRequests);
+      if (remote.assets && remote.assets.length > 0) setAssets(remote.assets);
+      if (remote.payrollPeriods && remote.payrollPeriods.length > 0) setPayrollPeriods(remote.payrollPeriods);
+      return { success: true, message: 'Latest data pulled from Supabase successfully!' };
+    } catch (err: any) {
+      return { success: false, message: err.message || 'Failed to pull data from Supabase' };
+    } finally {
+      setIsSupabaseSyncing(false);
+    }
+  };
 
   // Clear legacy cached dummy data and enforce clean empty state
   useEffect(() => {
@@ -684,6 +777,10 @@ export const ErpProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         disbursePayrollPeriod,
         globalSearch,
         setGlobalSearch,
+        isSupabaseActive,
+        isSupabaseSyncing,
+        syncToSupabase,
+        pullFromSupabase,
       }}
     >
       {children}
