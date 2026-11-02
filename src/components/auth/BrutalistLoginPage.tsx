@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { 
-  ShieldAlert, 
+  ShieldCheck, 
   Lock, 
   User, 
   Eye, 
@@ -10,7 +10,10 @@ import {
   Building2, 
   AlertTriangle,
   CheckCircle2,
-  Terminal
+  MapPin,
+  Landmark,
+  BadgeCheck,
+  FileSpreadsheet
 } from 'lucide-react';
 import { useErp } from '../../context/ErpContext';
 
@@ -31,7 +34,7 @@ export const BrutalistLoginPage: React.FC = () => {
     setTimeout(() => {
       const result = login(username, password);
       if (!result.success) {
-        setErrorMessage(result.error || 'ACCESS DENIED: INVALID CREDENTIALS');
+        setErrorMessage(result.error || 'Access Denied: Invalid administrator credentials.');
         setIsSubmitting(false);
       }
     }, 250);
@@ -42,90 +45,118 @@ export const BrutalistLoginPage: React.FC = () => {
     setPassword('admin');
     setFillFeedback(true);
     setErrorMessage('');
-    setTimeout(() => setFillFeedback(false), 2000);
+    setTimeout(() => setFillFeedback(false), 2200);
   };
 
   return (
-    <div className="min-h-screen bg-[#F0EFE9] text-black font-mono antialiased flex flex-col justify-between selection:bg-black selection:text-[#FFE600] relative overflow-x-hidden">
-      {/* Background Architectural Grid Pattern */}
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-between selection:bg-emerald-500 selection:text-white relative overflow-hidden font-sans">
+      {/* Ambient Emerald & Slate Glows */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[340px] bg-gradient-to-b from-emerald-600/20 via-teal-900/10 to-transparent blur-3xl pointer-events-none" />
+      <div className="absolute -bottom-32 -right-32 w-96 h-96 bg-emerald-700/10 rounded-full blur-3xl pointer-events-none" />
+
+      {/* Subtle Grid Pattern */}
       <div 
-        className="absolute inset-0 pointer-events-none opacity-20"
+        className="absolute inset-0 pointer-events-none opacity-[0.06]"
         style={{
-          backgroundImage: 'radial-gradient(#000000 1.5px, transparent 1.5px)',
+          backgroundImage: 'radial-gradient(#34d399 1px, transparent 1px)',
           backgroundSize: '24px 24px'
         }}
       />
 
-      {/* Top Warning Strip */}
-      <div className="w-full bg-black text-[#FFE600] px-4 py-2 border-b-[3px] border-black flex flex-wrap items-center justify-between gap-2 text-xs font-bold uppercase tracking-widest relative z-10">
-        <div className="flex items-center gap-2">
-          <Terminal className="w-4 h-4 text-[#FFE600] shrink-0" />
-          <span>SYS_GATE // FAFAB LIMITED ERP · SINGLE ADMIN PROTOCOL</span>
+      {/* Top Corporate Status Bar */}
+      <header className="w-full bg-slate-900/80 backdrop-blur-md border-b border-slate-800/80 px-4 sm:px-6 py-2.5 flex items-center justify-between text-xs relative z-10">
+        <div className="flex items-center gap-3">
+          <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+          <span className="font-semibold text-slate-200 tracking-wide">
+            {companyProfile.name || 'FAFAB LIMITED'} · ENTERPRISE ERP GATEWAY
+          </span>
+          <span className="hidden md:inline text-slate-500">|</span>
+          <span className="hidden md:flex items-center gap-1.5 text-slate-400">
+            <MapPin className="w-3.5 h-3.5 text-emerald-400" />
+            {companyProfile.city || 'Bahria Town, Lahore, Punjab, Pakistan'}
+          </span>
         </div>
-        <div className="hidden sm:flex items-center gap-4 text-[11px]">
-          <span>SECP REG: 0192847</span>
-          <span>·</span>
-          <span>FBR NTN: 8943210-7</span>
-          <span>·</span>
-          <span>PRA: 16% ON SERVICES</span>
-        </div>
-      </div>
 
-      {/* Main Container */}
+        <div className="flex items-center gap-3 text-slate-400 text-[11px]">
+          <span className="hidden sm:inline">SECP Reg: <strong className="text-slate-200 font-mono">0192847</strong></span>
+          <span className="hidden sm:inline text-slate-600">·</span>
+          <span className="hidden sm:inline">FBR NTN: <strong className="text-slate-200 font-mono">8943210-7</strong></span>
+          <span className="hidden sm:inline text-slate-600">·</span>
+          <span className="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-medium">
+            PRA 16% Active
+          </span>
+        </div>
+      </header>
+
+      {/* Main Authentication Card */}
       <main className="flex-1 flex items-center justify-center p-4 sm:p-6 lg:p-8 relative z-10">
-        <div className="w-full max-w-xl">
-          {/* Main Brutalist Card */}
-          <div className="bg-white border-[3px] border-black shadow-[8px_8px_0px_0px_#000] relative">
-            {/* Header Bar */}
-            <div className="bg-black text-white p-4 sm:p-5 border-b-[3px] border-black flex items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-[#FFE600] text-black font-black flex items-center justify-center border-2 border-white text-base">
-                  F
+        <div className="w-full max-w-lg">
+          {/* Main Card Container */}
+          <div className="bg-white text-slate-900 rounded-2xl shadow-2xl shadow-slate-950/50 border border-slate-200/80 overflow-hidden">
+            {/* Header Section */}
+            <div className="bg-slate-900 text-white p-6 sm:p-7 border-b border-slate-800 relative">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex items-center gap-3.5">
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-600 to-teal-800 flex items-center justify-center shadow-lg shadow-emerald-950/40 text-white font-bold text-xl ring-1 ring-emerald-400/40 shrink-0">
+                    F
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h1 className="font-bold text-lg sm:text-xl text-white tracking-tight leading-snug">
+                        {companyProfile.name || 'FAFAB LIMITED'}
+                      </h1>
+                      <span className="px-2 py-0.5 text-[10px] font-semibold bg-emerald-500/20 text-emerald-300 rounded border border-emerald-500/30">
+                        ERP
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      Enterprise Financials, Invoicing & Payroll Engine
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h1 className="font-black text-lg sm:text-xl tracking-tight leading-none text-white uppercase">
-                    {companyProfile.name || 'FAFAB LIMITED'}
-                  </h1>
-                  <p className="text-[10px] sm:text-xs text-[#FFE600] font-semibold mt-1 tracking-wider uppercase">
-                    ENTERPRISE LEDGER & TAX SYSTEM · BAH RIA TOWN LAHORE
-                  </p>
-                </div>
-              </div>
-              <div className="hidden xs:flex flex-col items-end">
-                <span className="text-[10px] bg-white text-black font-black px-2 py-0.5 border border-black uppercase tracking-wider">
-                  ROOT ONLY
-                </span>
-                <span className="text-[9px] text-slate-300 mt-1">VER: 2026.4</span>
-              </div>
-            </div>
 
-            {/* Sub-Header Notice */}
-            <div className="bg-[#FFE600] border-b-[3px] border-black px-4 py-2 text-xs font-bold flex items-center justify-between text-black">
-              <span className="uppercase tracking-wider">RESTRICTED ACCESS PORTAL</span>
-              <span className="text-[11px] font-black">1 SINGLE ADMIN ACCOUNT</span>
+                <div className="hidden xs:flex flex-col items-end">
+                  <span className="px-2.5 py-1 text-[10px] font-semibold tracking-wide bg-emerald-950 text-emerald-300 rounded-md border border-emerald-500/30 flex items-center gap-1.5">
+                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                    SINGLE ADMIN
+                  </span>
+                  <span className="text-[10px] text-slate-400 mt-1 font-mono">v2026.4</span>
+                </div>
+              </div>
+
+              {/* Single Admin Architecture Notice */}
+              <div className="mt-4 pt-3.5 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-300">
+                <span className="flex items-center gap-1.5 text-emerald-400 font-medium">
+                  <BadgeCheck className="w-4 h-4 text-emerald-400 shrink-0" />
+                  Chief Administrator Security Protocol
+                </span>
+                <span className="text-[11px] text-slate-400">
+                  Protected System
+                </span>
+              </div>
             </div>
 
             {/* Error Banner */}
             {errorMessage && (
-              <div className="bg-[#FF3B30] text-white p-3.5 border-b-[3px] border-black flex items-start gap-2.5 text-xs font-bold animate-shake">
-                <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+              <div className="bg-rose-50 border-b border-rose-200 p-3.5 px-6 flex items-start gap-2.5 text-xs text-rose-800 animate-in fade-in duration-200">
+                <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
                 <div className="flex-1">
-                  <div className="uppercase tracking-wider">AUTHENTICATION ERROR:</div>
-                  <div className="font-medium text-[11px] mt-0.5">{errorMessage}</div>
+                  <span className="font-semibold">Authentication failed: </span>
+                  <span>{errorMessage}</span>
                 </div>
               </div>
             )}
 
             {/* Form */}
-            <form onSubmit={handleSubmit} className="p-6 sm:p-8 space-y-6">
+            <form onSubmit={handleSubmit} className="p-6 sm:p-7 space-y-5">
               {/* Username Input */}
               <div className="space-y-1.5">
-                <div className="flex justify-between items-center text-xs font-bold uppercase">
-                  <label htmlFor="admin-user" className="flex items-center gap-1.5">
-                    <User className="w-3.5 h-3.5" />
-                    <span>[ 01 · ADMIN IDENTIFIER ]</span>
+                <div className="flex justify-between items-center text-xs">
+                  <label htmlFor="admin-user" className="font-semibold text-slate-700 flex items-center gap-1.5">
+                    <User className="w-3.5 h-3.5 text-slate-500" />
+                    <span>Administrator Email / Username</span>
                   </label>
-                  <span className="text-[10px] text-slate-600 font-semibold">EXCLUSIVE ROOT ID</span>
+                  <span className="text-[11px] text-slate-400">Root Account</span>
                 </div>
                 <div className="relative">
                   <input
@@ -134,20 +165,20 @@ export const BrutalistLoginPage: React.FC = () => {
                     required
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
-                    placeholder="e.g. admin@fafab.com.pk or admin"
-                    className="w-full p-3.5 bg-[#FAF9F5] border-[2px] border-black text-black font-mono font-bold text-sm focus:outline-none focus:bg-white focus:shadow-[4px_4px_0px_0px_#000] transition-all"
+                    placeholder="admin@fafab.com.pk"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 font-medium text-sm focus:outline-none focus:bg-white focus:border-emerald-600 focus:ring-3 focus:ring-emerald-500/15 transition-all placeholder:text-slate-400"
                   />
                 </div>
               </div>
 
               {/* Password Input */}
               <div className="space-y-1.5">
-                <div className="flex justify-between items-center text-xs font-bold uppercase">
-                  <label htmlFor="admin-pass" className="flex items-center gap-1.5">
-                    <Lock className="w-3.5 h-3.5" />
-                    <span>[ 02 · SECURITY PASSPHRASE ]</span>
+                <div className="flex justify-between items-center text-xs">
+                  <label htmlFor="admin-pass" className="font-semibold text-slate-700 flex items-center gap-1.5">
+                    <Lock className="w-3.5 h-3.5 text-slate-500" />
+                    <span>Security Password</span>
                   </label>
-                  <span className="text-[10px] text-slate-600 font-semibold">KEY ENCRYPTED</span>
+                  <span className="text-[11px] text-slate-400">Encrypted</span>
                 </div>
                 <div className="relative">
                   <input
@@ -157,13 +188,13 @@ export const BrutalistLoginPage: React.FC = () => {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Enter admin password..."
-                    className="w-full p-3.5 pr-12 bg-[#FAF9F5] border-[2px] border-black text-black font-mono font-bold text-sm focus:outline-none focus:bg-white focus:shadow-[4px_4px_0px_0px_#000] transition-all"
+                    className="w-full px-3.5 py-2.5 pr-11 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 font-medium text-sm focus:outline-none focus:bg-white focus:border-emerald-600 focus:ring-3 focus:ring-emerald-500/15 transition-all placeholder:text-slate-400"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 text-black hover:bg-black hover:text-white border border-transparent hover:border-black transition-colors cursor-pointer"
-                    aria-label={showPassword ? 'Hide passphrase' : 'Show passphrase'}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
                   >
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
@@ -171,17 +202,17 @@ export const BrutalistLoginPage: React.FC = () => {
               </div>
 
               {/* Quick Fill Button */}
-              <div className="pt-1">
+              <div>
                 <button
                   type="button"
                   onClick={handleQuickFill}
-                  className="w-full py-2 px-3 bg-[#E5E7EB] hover:bg-[#D1D5DB] border-[2px] border-black text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer active:translate-x-[2px] active:translate-y-[2px]"
+                  className="w-full py-2 px-3 bg-emerald-50 hover:bg-emerald-100/80 border border-emerald-200/70 text-emerald-800 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition-colors cursor-pointer"
                 >
-                  <KeyRound className="w-3.5 h-3.5 text-black" />
+                  <KeyRound className="w-3.5 h-3.5 text-emerald-600" />
                   <span>
-                    {fillFeedback ? 'CREDENTIALS POPULATED (admin / admin)' : 'CLICK TO AUTO-FILL ADMIN CREDENTIALS'}
+                    {fillFeedback ? 'Credentials Loaded (admin@fafab.com.pk / admin)' : 'Click to Auto-Fill Default Admin Credentials'}
                   </span>
-                  {fillFeedback && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700" />}
+                  {fillFeedback && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 ml-1" />}
                 </button>
               </div>
 
@@ -189,44 +220,57 @@ export const BrutalistLoginPage: React.FC = () => {
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full py-4 px-6 bg-black hover:bg-[#1E1E1E] text-white font-black text-sm tracking-wider uppercase border-[3px] border-black shadow-[6px_6px_0px_0px_#FFE600] hover:shadow-[4px_4px_0px_0px_#FFE600] active:translate-x-[2px] active:translate-y-[2px] active:shadow-[0px_0px_0px_0px_#FFE600] transition-all flex items-center justify-center gap-3 cursor-pointer disabled:opacity-75"
+                className="w-full py-3 px-4 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-semibold text-sm rounded-xl shadow-lg shadow-emerald-700/20 hover:shadow-emerald-700/30 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed"
               >
-                <span>{isSubmitting ? 'VERIFYING CREDENTIALS...' : 'AUTHENTICATE & ENTER ERP'}</span>
-                <ArrowRight className="w-5 h-5 text-[#FFE600]" />
+                <span>{isSubmitting ? 'Verifying Administrator Credentials...' : 'Authenticate & Enter ERP'}</span>
+                <ArrowRight className="w-4 h-4 text-emerald-100" />
               </button>
             </form>
 
-            {/* Security Footer Notice */}
-            <div className="p-4 bg-[#FAF9F5] border-t-[3px] border-black text-[11px] text-slate-700 space-y-1">
-              <div className="flex items-center gap-2 font-bold text-black">
-                <ShieldAlert className="w-4 h-4 text-black shrink-0" />
-                <span>SINGLE-USER ARCHITECTURE ENFORCED:</span>
+            {/* Architecture Notice Footer */}
+            <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 text-xs text-slate-600 space-y-1">
+              <div className="flex items-center gap-2 font-semibold text-slate-800">
+                <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span>Single-User Enterprise Security Policy</span>
               </div>
-              <p className="text-[10px] leading-relaxed">
-                This ERP instance is strictly isolated for the Chief Administrator. Multi-account self-registration is permanently disabled. All tax invoices, payroll disbursements, and general ledger postings are executed under primary root authority.
+              <p className="text-[11px] leading-relaxed text-slate-500">
+                This deployment is restricted exclusively to the Chief Administrator. Multi-account self-registration is permanently disabled. Invoices in PKR, USD, EUR, and GBP, expense ledgers, and payroll disbursements are executed under central authority.
               </p>
             </div>
           </div>
 
-          {/* Quick Info Box */}
-          <div className="mt-4 p-3 bg-white border-[2px] border-black shadow-[4px_4px_0px_0px_#000] flex items-center justify-between text-[11px] font-bold">
-            <span className="text-slate-600">DEFAULT ADMIN ACCESS:</span>
-            <span className="bg-[#FFE600] px-2 py-0.5 border border-black">admin@fafab.com.pk / admin</span>
+          {/* Quick Info Box underneath */}
+          <div className="mt-4 p-3 bg-slate-900/90 backdrop-blur-xs border border-slate-800 rounded-xl flex items-center justify-between text-xs text-slate-300">
+            <span className="text-slate-400 font-medium">Default Admin Access:</span>
+            <div className="flex items-center gap-2">
+              <code className="bg-slate-800 text-emerald-400 font-mono text-[11px] px-2 py-0.5 rounded border border-slate-700">
+                admin@fafab.com.pk
+              </code>
+              <span className="text-slate-500">/</span>
+              <code className="bg-slate-800 text-emerald-400 font-mono text-[11px] px-2 py-0.5 rounded border border-slate-700">
+                admin
+              </code>
+            </div>
           </div>
         </div>
       </main>
 
-      {/* Brutalist Footer Strip */}
-      <footer className="w-full bg-white border-t-[3px] border-black p-3 text-[11px] font-bold uppercase tracking-wider flex flex-col sm:flex-row items-center justify-between gap-2 relative z-10">
+      {/* Enterprise Footer Strip */}
+      <footer className="w-full bg-slate-900/90 backdrop-blur-md border-t border-slate-800/80 px-4 sm:px-6 py-3 text-xs text-slate-400 flex flex-col sm:flex-row items-center justify-between gap-2 relative z-10">
         <div>
-          © {new Date().getFullYear()} {companyProfile.name || 'FAFAB LIMITED'} · ALL RIGHTS RESERVED
+          © {new Date().getFullYear()} {companyProfile.name || 'FAFAB LIMITED'} · Enterprise Resource Planning System
         </div>
-        <div className="flex items-center gap-3 text-slate-600">
-          <span>SECURED UNDER PAKISTAN IT ACT</span>
+        <div className="flex items-center gap-3 text-[11px] text-slate-400">
+          <span>Compliant with FBR & PRA</span>
           <span>·</span>
-          <span>SECTOR C, BAHRIA TOWN LAHORE</span>
+          <span>Punjab IT Framework</span>
+          <span>·</span>
+          <span>Bahria Town, Lahore</span>
         </div>
       </footer>
     </div>
   );
 };
+
+// Also export as LoginPage for clean naming
+export const LoginPage = BrutalistLoginPage;
