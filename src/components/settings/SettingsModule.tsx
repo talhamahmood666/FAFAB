@@ -27,7 +27,11 @@ import {
   Server,
   Loader2,
   Zap,
-  AlertTriangle
+  AlertTriangle,
+  Award,
+  Printer,
+  FileText,
+  Image as ImageIcon
 } from 'lucide-react';
 import { useErp } from '../../context/ErpContext';
 import { SupportedCurrency, DEFAULT_CURRENCIES } from '../../utils/currency';
@@ -43,6 +47,8 @@ export const SettingsModule: React.FC = () => {
   const { 
     companyProfile, 
     updateCompanyProfile, 
+    isPsebModalOpen,
+    setIsPsebModalOpen,
     expenseCategories, 
     addExpenseCategory, 
     renameExpenseCategory, 
@@ -74,7 +80,7 @@ export const SettingsModule: React.FC = () => {
     updateAdminPassword
   } = useErp();
 
-  const [activeTab, setActiveTab] = useState<'profile' | 'categories' | 'currency' | 'backup' | 'supabase'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'pseb' | 'categories' | 'currency' | 'backup' | 'supabase'>('profile');
 
   // Admin Password State
   const [newAdminPassword, setNewAdminPassword] = useState('');
@@ -109,6 +115,40 @@ export const SettingsModule: React.FC = () => {
   // Backup & Restore State
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [backupMessage, setBackupMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+
+  // PSEB Certificate State
+  const psebFileInputRef = useRef<HTMLInputElement>(null);
+  const [psebSuccessMessage, setPsebSuccessMessage] = useState('');
+
+  const handlePsebFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = reader.result as string;
+        setProfileForm(prev => ({ ...prev, psebCertificateDoc: result }));
+        updateCompanyProfile({ psebCertificateDoc: result });
+        setPsebSuccessMessage('Scanned PSEB Certificate document attached and synced!');
+        setTimeout(() => setPsebSuccessMessage(''), 4000);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleSavePseb = (e: React.FormEvent) => {
+    e.preventDefault();
+    updateCompanyProfile({
+      psebRegNo: profileForm.psebRegNo,
+      psebStatus: profileForm.psebStatus,
+      psebCategory: profileForm.psebCategory,
+      psebIssueDate: profileForm.psebIssueDate,
+      psebExpiryDate: profileForm.psebExpiryDate,
+      psebSbpRetentionClause: profileForm.psebSbpRetentionClause,
+      psebCertificateDoc: profileForm.psebCertificateDoc
+    });
+    setPsebSuccessMessage('PSEB registration numbers and software company status updated successfully!');
+    setTimeout(() => setPsebSuccessMessage(''), 4000);
+  };
 
   // Handle Profile Submit
   const handleSaveProfile = (e: React.FormEvent) => {
@@ -295,6 +335,20 @@ export const SettingsModule: React.FC = () => {
 
         <button
           type="button"
+          onClick={() => setActiveTab('pseb')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
+            activeTab === 'pseb'
+              ? 'bg-emerald-600 text-white shadow-xs'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+          }`}
+        >
+          <Award className="w-4 h-4 text-emerald-400" />
+          <span>PSEB Software Registration & Certificate</span>
+          <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">Active</span>
+        </button>
+
+        <button
+          type="button"
           onClick={() => setActiveTab('categories')}
           className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
             activeTab === 'categories'
@@ -463,6 +517,31 @@ export const SettingsModule: React.FC = () => {
                   placeholder="e.g. PESSI-LHR-9981"
                   className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-lg font-mono focus:bg-white"
                 />
+              </div>
+
+              <div>
+                <label className="font-semibold text-slate-700 block mb-1">
+                  PSEB Registration Number (Pakistan Software Export Board)
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={profileForm.psebRegNo || ''}
+                    onChange={(e) => setProfileForm({ ...profileForm, psebRegNo: e.target.value })}
+                    placeholder="e.g. PSEB-REG-2024-8943"
+                    className="flex-1 p-2.5 bg-slate-50 border border-slate-300 rounded-lg font-mono font-bold text-emerald-800 focus:bg-white"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setIsPsebModalOpen(true)}
+                    className="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold whitespace-nowrap cursor-pointer transition-colors shadow-xs"
+                  >
+                    View Certificate
+                  </button>
+                </div>
+                <p className="text-[10px] text-slate-400 mt-1">
+                  Enables 0.25% concessionary final tax under Sec 154A of ITO & 50% SBP FX ESFCA retention.
+                </p>
               </div>
             </div>
           </div>
@@ -674,8 +753,295 @@ export const SettingsModule: React.FC = () => {
       )}
 
       {/* ======================================================================= */}
-      {/* TAB 2: EXPENSE CATEGORIES MANAGEMENT                                   */}
+      {/* TAB: PSEB SOFTWARE HOUSE REGISTRATION & CERTIFICATE                    */}
       {/* ======================================================================= */}
+      {activeTab === 'pseb' && (
+        <div className="space-y-6">
+          {psebSuccessMessage && (
+            <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-800 font-medium flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span>{psebSuccessMessage}</span>
+            </div>
+          )}
+
+          {/* PSEB Hero Overview Banner */}
+          <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-emerald-950 rounded-2xl p-6 text-white border border-slate-700/80 shadow-lg relative overflow-hidden">
+            <div className="absolute right-0 top-0 bottom-0 w-80 bg-radial from-emerald-500/10 to-transparent pointer-events-none" />
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative z-10">
+              <div className="flex items-start gap-4">
+                <div className="w-14 h-14 rounded-2xl bg-[#0f4c3a] border-2 border-emerald-400/40 text-emerald-300 flex items-center justify-center shadow-lg shrink-0">
+                  <Award className="w-7 h-7" />
+                </div>
+                <div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="text-lg font-bold tracking-tight text-white">
+                      Pakistan Software Export Board (PSEB) Registration
+                    </h3>
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                      {profileForm.psebStatus || 'Active'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-300 mt-1 max-w-2xl leading-relaxed">
+                    Official software company accreditation under Ministry of Information Technology & Telecommunication, Government of Pakistan. Enables 0.25% concessionary export tax (Sec 154A ITO) and 50% foreign exchange retention (SBP ESFCA).
+                  </p>
+                  <div className="flex flex-wrap items-center gap-4 mt-3 text-xs text-slate-400 font-mono">
+                    <div>
+                      PSEB ID: <strong className="text-emerald-400">{profileForm.psebRegNo || 'PSEB-REG-2024-8943'}</strong>
+                    </div>
+                    <span>•</span>
+                    <div>
+                      Category: <span className="text-slate-200">{profileForm.psebCategory || 'IT & ITeS Software House'}</span>
+                    </div>
+                    <span>•</span>
+                    <div>
+                      Valid To: <span className="text-slate-200">{profileForm.psebExpiryDate || '2027-06-30'}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setIsPsebModalOpen(true)}
+                  className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md shadow-emerald-950/40 transition-all flex items-center gap-2 cursor-pointer"
+                >
+                  <Award className="w-4 h-4" />
+                  <span>View & Print Official Certificate</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Form to Manage PSEB Registration Details */}
+          <form onSubmit={handleSavePseb} className="space-y-6">
+            <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div className="flex items-center gap-2">
+                  <ShieldCheck className="w-5 h-5 text-emerald-600" />
+                  <div>
+                    <h4 className="font-bold text-slate-900 text-sm">PSEB Registration Identifiers & Dates</h4>
+                    <p className="text-[11px] text-slate-500">Update company registration credentials printed on invoices and official certificates.</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                <div>
+                  <label className="font-semibold text-slate-700 block mb-1">
+                    PSEB Registration Number *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={profileForm.psebRegNo || ''}
+                    onChange={(e) => setProfileForm({ ...profileForm, psebRegNo: e.target.value })}
+                    placeholder="e.g. PSEB-REG-2024-8943"
+                    className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-lg font-mono font-bold text-emerald-800 focus:bg-white text-sm"
+                  />
+                  <p className="text-[10px] text-slate-400 mt-1">Printed on foreign client invoices for SBP remittance clearing.</p>
+                </div>
+
+                <div>
+                  <label className="font-semibold text-slate-700 block mb-1">
+                    Registration Category
+                  </label>
+                  <select
+                    value={profileForm.psebCategory || 'IT & IT-Enabled Services (ITeS) / Software House'}
+                    onChange={(e) => setProfileForm({ ...profileForm, psebCategory: e.target.value })}
+                    className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-lg focus:bg-white text-slate-900 font-medium"
+                  >
+                    <option value="IT & IT-Enabled Services (ITeS) / Software House">IT & IT-Enabled Services (ITeS) / Software House</option>
+                    <option value="Software Development & Cloud SaaS">Software Development & Cloud SaaS</option>
+                    <option value="IT Consulting, AI & Enterprise Solutions">IT Consulting, AI & Enterprise Solutions</option>
+                    <option value="Call Center & Business Process Outsourcing (BPO)">Call Center & Business Process Outsourcing (BPO)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="font-semibold text-slate-700 block mb-1">
+                    Registration Issue Date
+                  </label>
+                  <input
+                    type="date"
+                    value={profileForm.psebIssueDate || '2024-07-01'}
+                    onChange={(e) => setProfileForm({ ...profileForm, psebIssueDate: e.target.value })}
+                    className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-lg focus:bg-white text-slate-900 font-medium"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-semibold text-slate-700 block mb-1">
+                    Registration Expiry / Renewal Date
+                  </label>
+                  <input
+                    type="date"
+                    value={profileForm.psebExpiryDate || '2027-06-30'}
+                    onChange={(e) => setProfileForm({ ...profileForm, psebExpiryDate: e.target.value })}
+                    className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-lg focus:bg-white text-slate-900 font-medium"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-semibold text-slate-700 block mb-1">
+                    Registration Standing / Status
+                  </label>
+                  <select
+                    value={profileForm.psebStatus || 'Active'}
+                    onChange={(e) => setProfileForm({ ...profileForm, psebStatus: e.target.value as any })}
+                    className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-lg focus:bg-white text-slate-900 font-medium"
+                  >
+                    <option value="Active">Active & Compliant</option>
+                    <option value="Under Renewal">Under Renewal</option>
+                    <option value="Expired">Expired</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="font-semibold text-slate-700 block mb-1">
+                    SECP Incorporation Ref (Cross-Reference)
+                  </label>
+                  <input
+                    type="text"
+                    value={profileForm.registrationNo}
+                    disabled
+                    className="w-full p-2.5 bg-slate-100 border border-slate-200 rounded-lg text-slate-500 font-mono"
+                  />
+                  <p className="text-[10px] text-slate-400 mt-1">Pulled from SECP Corporate Profile.</p>
+                </div>
+              </div>
+
+              <div>
+                <label className="font-semibold text-slate-700 block mb-1">
+                  State Bank of Pakistan (SBP) & Tax Exemption Clause
+                </label>
+                <textarea
+                  rows={2}
+                  value={profileForm.psebSbpRetentionClause || ''}
+                  onChange={(e) => setProfileForm({ ...profileForm, psebSbpRetentionClause: e.target.value })}
+                  placeholder="Clause printed on export invoices and remittance instructions..."
+                  className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-lg focus:bg-white text-slate-900 text-xs"
+                />
+              </div>
+            </div>
+
+            {/* Scanned Certificate Attachment Card */}
+            <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div className="flex items-center gap-2">
+                  <ImageIcon className="w-5 h-5 text-emerald-600" />
+                  <div>
+                    <h4 className="font-bold text-slate-900 text-sm">Scanned PSEB Certificate Document</h4>
+                    <p className="text-[11px] text-slate-500">Attach an official physical scanned certificate or PDF document for records and auditing.</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <input
+                    ref={psebFileInputRef}
+                    type="file"
+                    accept="image/*,application/pdf"
+                    onChange={handlePsebFileUpload}
+                    className="hidden"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => psebFileInputRef.current?.click()}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 text-xs font-semibold cursor-pointer transition-colors"
+                  >
+                    <Upload className="w-3.5 h-3.5" />
+                    <span>{profileForm.psebCertificateDoc ? 'Replace Document' : 'Upload Scanned File'}</span>
+                  </button>
+                  {profileForm.psebCertificateDoc && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setProfileForm(prev => ({ ...prev, psebCertificateDoc: undefined }));
+                        updateCompanyProfile({ psebCertificateDoc: undefined });
+                      }}
+                      className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 text-xs font-semibold cursor-pointer transition-colors"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>Remove</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {profileForm.psebCertificateDoc ? (
+                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 flex flex-col items-center justify-center">
+                  <img
+                    src={profileForm.psebCertificateDoc}
+                    alt="Attached PSEB Certificate"
+                    className="max-h-60 object-contain rounded-lg shadow-sm border border-slate-200"
+                  />
+                  <span className="text-[11px] text-slate-500 font-medium mt-2">
+                    Scanned copy attached. Viewable in Certificate modal or downloadable anytime.
+                  </span>
+                </div>
+              ) : (
+                <div className="border-2 border-dashed border-slate-200 rounded-xl p-6 text-center text-xs text-slate-500">
+                  <Award className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                  <p className="font-semibold text-slate-700">No scanned certificate uploaded yet</p>
+                  <p className="text-[11px] text-slate-400 mt-1">
+                    The ERP automatically generates an official verified digital certificate. You can also upload a scanned copy of your physical paper certificate.
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* SBP IT Exporter Guidelines Informational Card */}
+            <div className="bg-[#f0f9f6] rounded-2xl border border-emerald-200/80 p-6 space-y-3">
+              <div className="flex items-center gap-2">
+                <Landmark className="w-5 h-5 text-emerald-800" />
+                <h4 className="font-bold text-emerald-900 text-sm">
+                  State Bank of Pakistan (SBP) & FBR IT Exporter Statutory Framework
+                </h4>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-slate-700 pt-2">
+                <div className="bg-white p-3.5 rounded-xl border border-emerald-100 shadow-2xs space-y-1">
+                  <span className="font-bold text-emerald-800 block">Section 154A of ITO 2001</span>
+                  <p className="text-[11px] text-slate-600">
+                    Registered PSEB members pay a final <strong>0.25% concessionary tax</strong> on software exports realized via SBP PRC banking channels (vs 1% general unregistered rate).
+                  </p>
+                </div>
+                <div className="bg-white p-3.5 rounded-xl border border-emerald-100 shadow-2xs space-y-1">
+                  <span className="font-bold text-emerald-800 block">50% ESFCA Retention Quota</span>
+                  <p className="text-[11px] text-slate-600">
+                    Under SBP FE Circular No. 02/2023, IT software exporters can retain up to <strong>50% in foreign currency</strong> (USD/EUR/GBP) for overseas cloud hosting, software licenses, and marketing.
+                  </p>
+                </div>
+                <div className="bg-white p-3.5 rounded-xl border border-emerald-100 shadow-2xs space-y-1">
+                  <span className="font-bold text-emerald-800 block">Proceeds Realization (PRC)</span>
+                  <p className="text-[11px] text-slate-600">
+                    Always include your PSEB registration number on invoices billed to foreign clients so Meezan Bank / HBL automatically applies the correct IT export tariff code upon swift remittance.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Submit Button */}
+            <div className="flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setIsPsebModalOpen(true)}
+                className="px-5 py-2.5 bg-slate-800 hover:bg-slate-900 text-slate-200 font-bold text-xs rounded-xl shadow-xs flex items-center gap-2 cursor-pointer transition-colors"
+              >
+                <Printer className="w-4 h-4 text-emerald-400" />
+                <span>Open Certificate Modal</span>
+              </button>
+
+              <button
+                type="submit"
+                className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-sm flex items-center gap-2 transition-colors cursor-pointer"
+              >
+                <Save className="w-4 h-4" />
+                <span>Save PSEB Registration Settings</span>
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
       {activeTab === 'categories' && (
         <div className="space-y-6">
           {categorySuccessMessage && (

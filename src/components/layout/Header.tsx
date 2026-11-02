@@ -11,7 +11,8 @@ import {
   Cloud,
   Loader2,
   AlertTriangle,
-  AlertCircle
+  AlertCircle,
+  Award
 } from 'lucide-react';
 import { useErp } from '../../context/ErpContext';
 import { UserRole } from '../../types/erp';
@@ -31,6 +32,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenNewInvoice, onOpenNewExpen
     globalSearch, 
     setGlobalSearch,
     companyProfile,
+    setIsPsebModalOpen,
     selectedCurrency,
     setSelectedCurrency,
     isSupabaseActive,
@@ -53,17 +55,27 @@ export const Header: React.FC<HeaderProps> = ({ onOpenNewInvoice, onOpenNewExpen
             <Menu className="w-5 h-5" />
           </button>
 
-          <div className="hidden sm:flex items-center space-x-2 text-xs text-slate-500">
+          <div className="hidden md:flex items-center space-x-2 text-xs text-slate-500 whitespace-nowrap">
             <span className="font-semibold text-slate-800">{companyProfile.name}</span>
             <span>•</span>
-            <span className="flex items-center gap-1 text-slate-600">
+            <span className="hidden xl:flex items-center gap-1 text-slate-600">
               <Building2 className="w-3.5 h-3.5 text-emerald-600" />
               Sector C, Bahria Town Lahore
             </span>
-            <span>•</span>
+            <span className="hidden xl:inline">•</span>
             <span className="px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 font-mono text-[11px] font-semibold border border-emerald-200">
-              PRA: 16% Active
+              PRA 16%
             </span>
+            <span>•</span>
+            <button
+              type="button"
+              onClick={() => setIsPsebModalOpen(true)}
+              title="Click to view official Pakistan Software Export Board (PSEB) Certificate"
+              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-mono text-[11px] font-bold border border-emerald-200 transition-colors cursor-pointer"
+            >
+              <Award className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+              <span>PSEB: {companyProfile.psebRegNo || 'PSEB-REG-2024-8943'}</span>
+            </button>
           </div>
         </div>
 

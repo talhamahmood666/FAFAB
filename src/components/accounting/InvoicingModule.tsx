@@ -14,7 +14,8 @@ import {
   Building2, 
   MapPin, 
   ShieldCheck, 
-  ArrowLeft 
+  ArrowLeft,
+  Award
 } from 'lucide-react';
 import { useErp } from '../../context/ErpContext';
 import { 
@@ -50,6 +51,7 @@ export const InvoicingModule: React.FC<InvoicingModuleProps> = ({
     updateInvoiceStatus, 
     recordInvoicePayment, 
     companyProfile, 
+    setIsPsebModalOpen,
     addCustomer,
     customExchangeRates 
   } = useErp();
@@ -422,6 +424,14 @@ export const InvoicingModule: React.FC<InvoicingModuleProps> = ({
               <div className="flex items-center space-x-2">
                 <button
                   type="button"
+                  onClick={() => setIsPsebModalOpen(true)}
+                  className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+                >
+                  <Award className="w-3.5 h-3.5 text-emerald-400" />
+                  PSEB Cert
+                </button>
+                <button
+                  type="button"
                   onClick={() => window.print()}
                   className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
                 >
@@ -448,13 +458,16 @@ export const InvoicingModule: React.FC<InvoicingModuleProps> = ({
 
               return (
                 <div className="p-8 overflow-y-auto space-y-6 text-slate-800 font-sans print:p-0">
-                  {/* Multi-Currency Statutory Exchange Rate Banner */}
+                  {/* Multi-Currency & PSEB IT Exporter SBP Remittance Banner */}
                   {invCurr !== 'PKR' && (
-                    <div className="bg-blue-50 border border-blue-200 p-3 rounded-xl text-xs text-blue-900 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 print:border-slate-300">
+                    <div className="bg-emerald-50/80 border border-emerald-300 p-3 rounded-xl text-xs text-emerald-950 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 print:border-slate-300">
                       <div>
-                        <span className="font-bold">FOREIGN CURRENCY BILLING ({invCurrInfo.flag} {invCurr}):</span> Issued in {invCurrInfo.name} ({invCurrInfo.symbol}) at Exchange Rate <strong>1 {invCurr} = {invRate} PKR</strong>.
+                        <span className="font-bold">FOREIGN CURRENCY IT EXPORT BILLING ({invCurrInfo.flag} {invCurr}):</span> Issued in {invCurrInfo.name} ({invCurrInfo.symbol}) at Exchange Rate <strong>1 {invCurr} = {invRate} PKR</strong>.
+                        <div className="text-[11px] text-emerald-800 mt-0.5 font-medium">
+                          PSEB Exporter Reg: <strong>{companyProfile.psebRegNo || 'PSEB-REG-2024-8943'}</strong> • SBP 50% ESFCA Retention & 0.25% Sec 154A Tax Regime Compliant.
+                        </div>
                       </div>
-                      <div className="font-mono text-xs font-bold text-blue-900 bg-white/80 px-2 py-1 rounded border border-blue-200 whitespace-nowrap">
+                      <div className="font-mono text-xs font-bold text-emerald-900 bg-white px-2.5 py-1 rounded-lg border border-emerald-200 whitespace-nowrap shadow-2xs">
                         Statutory Equivalent: {formatPKR(invPkrTotal)}
                       </div>
                     </div>
@@ -478,6 +491,7 @@ export const InvoicingModule: React.FC<InvoicingModuleProps> = ({
                         <div><strong>SECP Reg:</strong> {companyProfile.registrationNo}</div>
                         <div><strong>FBR NTN:</strong> {companyProfile.ntn} • <strong>STRN:</strong> {companyProfile.strn}</div>
                         <div><strong>PRA Reg:</strong> {companyProfile.praRegNo} (Punjab Sales Tax on Services)</div>
+                        <div><strong>PSEB Reg:</strong> {companyProfile.psebRegNo || 'PSEB-REG-2024-8943'} (Pakistan Software Export Board)</div>
                         <div><strong>Phone:</strong> {companyProfile.phone} • <strong>Email:</strong> {companyProfile.email}</div>
                       </div>
                     </div>

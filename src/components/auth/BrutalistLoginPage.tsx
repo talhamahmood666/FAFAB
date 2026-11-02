@@ -80,8 +80,10 @@ export const BrutalistLoginPage: React.FC = () => {
         <div className="flex items-center gap-3 text-slate-400 text-[11px]">
           <span className="hidden sm:inline">SECP Reg: <strong className="text-slate-200 font-mono">0192847</strong></span>
           <span className="hidden sm:inline text-slate-600">·</span>
-          <span className="hidden sm:inline">FBR NTN: <strong className="text-slate-200 font-mono">8943210-7</strong></span>
+          <span className="hidden sm:inline">FBR NTN: <strong className="text-slate-200 font-mono">{companyProfile.ntn || '8943210-7'}</strong></span>
           <span className="hidden sm:inline text-slate-600">·</span>
+          <span className="hidden md:inline">PSEB: <strong className="text-emerald-400 font-mono">{companyProfile.psebRegNo || 'PSEB-REG-2024-8943'}</strong></span>
+          <span className="hidden md:inline text-slate-600">·</span>
           <span className="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-medium">
             PRA 16% Active
           </span>
@@ -261,9 +263,9 @@ export const BrutalistLoginPage: React.FC = () => {
           © {new Date().getFullYear()} {companyProfile.name || 'FAFAB LIMITED'} · Enterprise Resource Planning System
         </div>
         <div className="flex items-center gap-3 text-[11px] text-slate-400">
-          <span>Compliant with FBR & PRA</span>
+          <span>Compliant with FBR, PRA & PSEB</span>
           <span>·</span>
-          <span>Punjab IT Framework</span>
+          <span>Registered IT Exporter</span>
           <span>·</span>
           <span>Bahria Town, Lahore</span>
         </div>

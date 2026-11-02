@@ -45,6 +45,14 @@ export interface CompanyProfile {
   praRegNo: string;       // Punjab Revenue Authority
   eobiRegNo: string;
   pessiRegNo: string;
+  // Pakistan Software Export Board (PSEB) & IT Exporter Compliance
+  psebRegNo: string;      // e.g. "PSEB-REG-2024-8943"
+  psebStatus?: 'Active' | 'Under Renewal' | 'Expired';
+  psebCategory?: string;  // e.g. "IT & IT-Enabled Services (ITeS) / Software House"
+  psebIssueDate?: string; // YYYY-MM-DD
+  psebExpiryDate?: string;// YYYY-MM-DD
+  psebCertificateDoc?: string; // Scanned copy data URL or file reference
+  psebSbpRetentionClause?: string; // SBP 50% FX retention & Sec 154A ITO 0.25% regime
   address: string;
   city: string;
   province: string;

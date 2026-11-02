@@ -15,7 +15,8 @@ import {
   MapPin, 
   BadgeCheck,
   Settings,
-  LogOut 
+  LogOut,
+  Award
 } from 'lucide-react';
 import { useErp } from '../../context/ErpContext';
 import { ActiveModule } from '../../types/erp';
@@ -30,6 +31,7 @@ export const Sidebar: React.FC = () => {
     currentRole,
     leaveRequests,
     companyProfile,
+    setIsPsebModalOpen,
     logout
   } = useErp();
 
@@ -106,16 +108,26 @@ export const Sidebar: React.FC = () => {
           </button>
         </div>
 
-        {/* Pakistani Tax Compliance Strip */}
-        <div className="mx-4 mt-3 px-3 py-2 rounded-lg bg-slate-800/60 border border-slate-700/60 flex items-center justify-between text-xs text-slate-300">
-          <div className="flex items-center space-x-2">
-            <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
-            <div className="min-w-0">
-              <div className="text-[11px] font-semibold text-slate-200">FBR & PRA Compliant</div>
-              <div className="text-[10px] text-slate-400 font-mono truncate">NTN: {companyProfile.ntn || 'Not Set'}</div>
+        {/* Pakistani Tax & PSEB Compliance Strip */}
+        <div className="mx-4 mt-3 p-2.5 rounded-xl bg-slate-850 bg-slate-800/80 border border-slate-700/70 text-xs text-slate-300 space-y-1.5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
+              <div className="text-[11px] font-semibold text-slate-200">FBR, PRA & PSEB Compliant</div>
             </div>
+            <div className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
           </div>
-          <div className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+          <div className="flex items-center justify-between pt-1 border-t border-slate-700/50 text-[10px]">
+            <span className="font-mono text-slate-400">NTN: {companyProfile.ntn || 'Not Set'}</span>
+            <button
+              type="button"
+              onClick={() => setIsPsebModalOpen(true)}
+              className="text-emerald-400 hover:text-emerald-300 font-semibold inline-flex items-center gap-1 cursor-pointer transition-colors"
+            >
+              <Award className="w-3 h-3" />
+              <span>PSEB Cert</span>
+            </button>
+          </div>
         </div>
 
         {/* Navigation Groups */}

@@ -21,6 +21,7 @@ import { AssetManagementModule } from './components/hr/AssetManagementModule';
 import { PayrollModule } from './components/payroll/PayrollModule';
 import { SettingsModule } from './components/settings/SettingsModule';
 import { BrutalistLoginPage } from './components/auth/BrutalistLoginPage';
+import { PsebCertificateModal } from './components/compliance/PsebCertificateModal';
 import { Invoice } from './types/erp';
 
 const AppContent: React.FC = () => {
@@ -125,6 +126,9 @@ const AppContent: React.FC = () => {
           )}
         </main>
       </div>
+
+      {/* Global PSEB Certificate of Registration Modal */}
+      <PsebCertificateModal />
     </div>
   );
 };

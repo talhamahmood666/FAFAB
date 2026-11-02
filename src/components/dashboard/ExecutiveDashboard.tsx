@@ -9,7 +9,8 @@ import {
   ShieldAlert, 
   BarChart3,
   ArrowUpRight,
-  Plus
+  Plus,
+  Award
 } from 'lucide-react';
 import { useErp } from '../../context/ErpContext';
 import { formatPKR } from '../../utils/taxCalculations';
@@ -33,6 +34,7 @@ export const ExecutiveDashboard: React.FC<ExecutiveDashboardProps> = ({
     bankAccounts, 
     setActiveModule, 
     companyProfile,
+    setIsPsebModalOpen,
     formatAmount,
     selectedCurrency
   } = useErp();
@@ -87,7 +89,7 @@ export const ExecutiveDashboard: React.FC<ExecutiveDashboardProps> = ({
         </div>
 
         {/* Quick Info Badges */}
-        <div className="mt-5 pt-4 border-t border-slate-700/60 grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs text-slate-300">
+        <div className="mt-5 pt-4 border-t border-slate-700/60 grid grid-cols-2 sm:grid-cols-5 gap-3 text-xs text-slate-300">
           <div>
             <span className="text-slate-400 block text-[11px]">FBR NTN:</span>
             <span className="font-mono font-medium text-white">{companyProfile.ntn}</span>
@@ -97,12 +99,24 @@ export const ExecutiveDashboard: React.FC<ExecutiveDashboardProps> = ({
             <span className="font-mono font-medium text-emerald-400">{companyProfile.praRegNo}</span>
           </div>
           <div>
+            <span className="text-slate-400 block text-[11px]">PSEB Software Reg:</span>
+            <button
+              type="button"
+              onClick={() => setIsPsebModalOpen(true)}
+              title="Click to view official PSEB Certificate of Registration"
+              className="font-mono font-bold text-emerald-400 hover:text-emerald-300 inline-flex items-center gap-1 cursor-pointer transition-colors"
+            >
+              <Award className="w-3.5 h-3.5" />
+              <span>{companyProfile.psebRegNo || 'PSEB-REG-2024-8943'}</span>
+            </button>
+          </div>
+          <div>
             <span className="text-slate-400 block text-[11px]">Primary Treasury:</span>
             <span className="font-medium text-white">Meezan Bank Bahria Town</span>
           </div>
           <div>
-            <span className="text-slate-400 block text-[11px]">Runway Projection:</span>
-            <span className="font-medium text-emerald-400">9.5+ Months Active</span>
+            <span className="text-slate-400 block text-[11px]">IT Exporter Status:</span>
+            <span className="font-medium text-emerald-400">0.25% Sec 154A · Active</span>
           </div>
         </div>
       </div>

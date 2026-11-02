@@ -62,9 +62,11 @@ interface ErpContextType {
   setExchangeRate: (code: SupportedCurrency, rate: number) => void;
   formatAmount: (amountInPKR: number) => string;
 
-  // Company Profile
+  // Company Profile & PSEB Compliance
   companyProfile: CompanyProfile;
   updateCompanyProfile: (profile: Partial<CompanyProfile>) => void;
+  isPsebModalOpen: boolean;
+  setIsPsebModalOpen: (open: boolean) => void;
 
   // Expense Categories
   expenseCategories: string[];
@@ -190,10 +192,26 @@ export const ErpProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [currentRole, setCurrentRole] = useState<UserRole>('ADMIN');
   const [activeModule, setActiveModule] = useState<ActiveModule>('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isPsebModalOpen, setIsPsebModalOpen] = useState(false);
   // Company Profile State
   const [companyProfile, setCompanyProfile] = useState<CompanyProfile>(() => {
     const saved = localStorage.getItem('fafab_company_profile');
-    return saved ? JSON.parse(saved) : companyProfileData;
+    if (!saved) return companyProfileData;
+    try {
+      const parsed = JSON.parse(saved);
+      return {
+        ...companyProfileData,
+        ...parsed,
+        psebRegNo: parsed.psebRegNo || companyProfileData.psebRegNo,
+        psebStatus: parsed.psebStatus || companyProfileData.psebStatus || 'Active',
+        psebCategory: parsed.psebCategory || companyProfileData.psebCategory,
+        psebIssueDate: parsed.psebIssueDate || companyProfileData.psebIssueDate,
+        psebExpiryDate: parsed.psebExpiryDate || companyProfileData.psebExpiryDate,
+        psebSbpRetentionClause: parsed.psebSbpRetentionClause || companyProfileData.psebSbpRetentionClause,
+      };
+    } catch {
+      return companyProfileData;
+    }
   });
 
   useEffect(() => {
@@ -947,6 +965,8 @@ export const ErpProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setIsSidebarOpen,
         companyProfile,
         updateCompanyProfile,
+        isPsebModalOpen,
+        setIsPsebModalOpen,
         expenseCategories,
         addExpenseCategory,
         renameExpenseCategory,
