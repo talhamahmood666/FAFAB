@@ -6,7 +6,12 @@ import {
   Building2, 
   Calendar, 
   Globe2, 
-  Receipt 
+  Receipt,
+  LogOut,
+  Cloud,
+  Loader2,
+  AlertTriangle,
+  AlertCircle
 } from 'lucide-react';
 import { useErp } from '../../context/ErpContext';
 import { UserRole } from '../../types/erp';
@@ -20,13 +25,18 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({ onOpenNewInvoice, onOpenNewExpense }) => {
   const { 
     setIsSidebarOpen, 
+    setActiveModule,
     currentRole, 
     setCurrentRole, 
     globalSearch, 
     setGlobalSearch,
     companyProfile,
     selectedCurrency,
-    setSelectedCurrency
+    setSelectedCurrency,
+    isSupabaseActive,
+    autoSyncStatus,
+    isSupabaseSyncing,
+    logout
   } = useErp();
 
   return (
@@ -73,6 +83,53 @@ export const Header: React.FC<HeaderProps> = ({ onOpenNewInvoice, onOpenNewExpen
 
         {/* Right: Actions, Currency Switcher & Role Selector */}
         <div className="flex items-center space-x-2 sm:space-x-3">
+          {/* Supabase Live Cloud Status Badge */}
+          {isSupabaseActive && (
+            <div className="flex items-center">
+              {autoSyncStatus === 'tables_needed' ? (
+                <button
+                  type="button"
+                  onClick={() => setActiveModule('settings')}
+                  title="Supabase project is connected, but database tables need to be created. Click to run 1-click SQL setup."
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-400 hover:bg-amber-500 text-black font-black text-[11px] tracking-wide border border-black shadow-xs cursor-pointer animate-pulse transition-all"
+                >
+                  <AlertTriangle className="w-3.5 h-3.5 shrink-0 text-black" />
+                  <span className="hidden sm:inline">SQL Tables Needed</span>
+                  <span className="sm:hidden">SQL</span>
+                </button>
+              ) : autoSyncStatus === 'syncing' || isSupabaseSyncing ? (
+                <div 
+                  title="Automatically syncing latest ERP changes to Supabase PostgreSQL database in background..."
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200 text-[11px] font-bold"
+                >
+                  <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-600" />
+                  <span className="hidden sm:inline">Auto-Syncing...</span>
+                </div>
+              ) : autoSyncStatus === 'synced' ? (
+                <button
+                  type="button"
+                  onClick={() => setActiveModule('settings')}
+                  title="Live Auto-Sync Active: All invoices and ERP changes persist automatically to Supabase. Click to view settings."
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 text-[11px] font-bold cursor-pointer transition-colors"
+                >
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                  <Cloud className="w-3.5 h-3.5 text-emerald-600 hidden sm:inline" />
+                  <span>Auto-Synced</span>
+                </button>
+              ) : autoSyncStatus === 'error' ? (
+                <button
+                  type="button"
+                  onClick={() => setActiveModule('settings')}
+                  title="Auto-sync encountered an issue. Click to inspect Supabase settings."
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200 text-[11px] font-bold cursor-pointer transition-colors"
+                >
+                  <AlertCircle className="w-3.5 h-3.5 text-rose-600" />
+                  <span>Sync Alert</span>
+                </button>
+              ) : null}
+            </div>
+          )}
+
           {/* Quick Buttons */}
           <button
             type="button"
@@ -112,20 +169,22 @@ export const Header: React.FC<HeaderProps> = ({ onOpenNewInvoice, onOpenNewExpen
             </select>
           </div>
 
-          {/* Role Switcher */}
-          <div className="flex items-center border-l border-slate-200 pl-3 space-x-1.5">
-            <span className="text-[11px] font-medium text-slate-500 hidden xl:inline">Role:</span>
-            <select
-              value={currentRole}
-              onChange={(e) => setCurrentRole(e.target.value as UserRole)}
-              className="text-xs bg-slate-100 hover:bg-slate-200 border border-slate-300 text-slate-800 rounded-lg px-2.5 py-1.5 font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
-              aria-label="Select active user role"
+          {/* Single Admin Identity & Logout */}
+          <div className="flex items-center border-l border-slate-200 pl-3 space-x-2">
+            <div className="hidden lg:flex flex-col text-right">
+              <span className="text-xs font-bold text-slate-900 leading-none">Root Admin</span>
+              <span className="text-[10px] text-emerald-600 font-semibold mt-0.5">Exclusive Access</span>
+            </div>
+
+            <button
+              type="button"
+              onClick={logout}
+              title="Lock ERP and return to Brutalist Login Gate"
+              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-300 hover:border-black hover:bg-slate-100 text-xs font-bold text-slate-700 hover:text-black transition-colors cursor-pointer"
             >
-              <option value="ADMIN">Admin (CFO / Director)</option>
-              <option value="ACCOUNTANT">Accountant (Full Finance)</option>
-              <option value="HR_MANAGER">HR Manager</option>
-              <option value="EMPLOYEE">Employee (Self-Service)</option>
-            </select>
+              <LogOut className="w-3.5 h-3.5 text-slate-500" />
+              <span className="hidden sm:inline">Lock ERP</span>
+            </button>
           </div>
         </div>
       </div>

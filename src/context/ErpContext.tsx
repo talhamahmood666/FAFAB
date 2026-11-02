@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { 
   Account, 
   ActiveModule, 
@@ -42,7 +42,9 @@ import {
 } from '../utils/payrollCalculations';
 import { SupportedCurrency, DEFAULT_CURRENCIES, formatBasePKR } from '../utils/currency';
 import { isSupabaseConfigured } from '../lib/supabase';
-import { fetchAllFromSupabase, syncAllToSupabase } from '../services/supabaseService';
+import { fetchAllFromSupabase, syncAllToSupabase, deleteRecordFromSupabase } from '../services/supabaseService';
+
+export type AutoSyncStatus = 'idle' | 'syncing' | 'synced' | 'error' | 'tables_needed';
 
 interface ErpContextType {
   // Navigation & Role
@@ -123,13 +125,68 @@ interface ErpContextType {
   // Supabase Cloud Sync
   isSupabaseActive: boolean;
   isSupabaseSyncing: boolean;
-  syncToSupabase: () => Promise<{ success: boolean; message: string }>;
-  pullFromSupabase: () => Promise<{ success: boolean; message: string }>;
+  autoSyncStatus: AutoSyncStatus;
+  lastSyncedAt: Date | null;
+  autoSyncError: string | null;
+  isAutoSyncEnabled: boolean;
+  setIsAutoSyncEnabled: (enabled: boolean) => void;
+  syncToSupabase: () => Promise<{ success: boolean; message: string; tablesMissing?: boolean }>;
+  pullFromSupabase: () => Promise<{ success: boolean; message: string; tablesMissing?: boolean }>;
+  retryAutoSync: () => Promise<void>;
+
+  // Single Admin Authentication
+  isAuthenticated: boolean;
+  login: (usernameOrEmail: string, password: string) => { success: boolean; error?: string };
+  logout: () => void;
+  adminCredentials: { username: string };
+  updateAdminPassword: (newPass: string) => void;
 }
 
 const ErpContext = createContext<ErpContextType | undefined>(undefined);
 
 export const ErpProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  // Single Admin Authentication State
+  const [adminCredentials, setAdminCredentials] = useState<{ username: string; password: string }>(() => {
+    const saved = localStorage.getItem('fafab_admin_credentials');
+    return saved ? JSON.parse(saved) : { username: 'admin@fafab.com.pk', password: 'admin' };
+  });
+
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
+    return localStorage.getItem('fafab_auth_session') === 'true';
+  });
+
+  const login = (usernameOrEmail: string, password: string) => {
+    const inputUser = usernameOrEmail.trim().toLowerCase();
+    const storedUser = adminCredentials.username.toLowerCase();
+    const isUserMatch = inputUser === storedUser || inputUser === 'admin';
+    const isPasswordMatch = password === adminCredentials.password || (password === 'admin' && adminCredentials.password === 'admin');
+
+    if (isUserMatch && isPasswordMatch) {
+      localStorage.setItem('fafab_auth_session', 'true');
+      setIsAuthenticated(true);
+      setCurrentRole('ADMIN');
+      return { success: true };
+    }
+
+    if (!isUserMatch) {
+      return { success: false, error: 'ACCESS REJECTED: ONLY THE SINGLE REGISTERED ADMINISTRATOR HAS ACCESS.' };
+    }
+
+    return { success: false, error: 'INVALID SECURITY PASSPHRASE. VERIFY AND RETRY.' };
+  };
+
+  const logout = () => {
+    localStorage.removeItem('fafab_auth_session');
+    setIsAuthenticated(false);
+  };
+
+  const updateAdminPassword = (newPass: string) => {
+    if (!newPass.trim()) return;
+    const updated = { ...adminCredentials, password: newPass.trim() };
+    setAdminCredentials(updated);
+    localStorage.setItem('fafab_admin_credentials', JSON.stringify(updated));
+  };
+
   const [currentRole, setCurrentRole] = useState<UserRole>('ADMIN');
   const [activeModule, setActiveModule] = useState<ActiveModule>('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -281,42 +338,94 @@ export const ErpProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [selectedPayslip, setSelectedPayslip] = useState<PayrollRecord | null>(null);
   const [globalSearch, setGlobalSearch] = useState('');
 
-  // Supabase Cloud Sync State
+  // Supabase Cloud Sync State & Auto-Sync Engine
   const [isSupabaseSyncing, setIsSupabaseSyncing] = useState(false);
   const isSupabaseActive = isSupabaseConfigured();
+  const [autoSyncStatus, setAutoSyncStatus] = useState<AutoSyncStatus>('idle');
+  const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(null);
+  const [autoSyncError, setAutoSyncError] = useState<string | null>(null);
+  const [isAutoSyncEnabled, setIsAutoSyncEnabled] = useState<boolean>(() => {
+    const saved = localStorage.getItem('fafab_autosync_enabled');
+    return saved === null ? true : saved === 'true';
+  });
+
+  const isInitialHydrated = useRef(false);
+  const isPullingRemote = useRef(false);
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    localStorage.setItem('fafab_autosync_enabled', String(isAutoSyncEnabled));
+  }, [isAutoSyncEnabled]);
 
   // Load from Supabase on startup if configured
   useEffect(() => {
     if (isSupabaseActive) {
       setIsSupabaseSyncing(true);
+      setAutoSyncStatus('syncing');
+      isPullingRemote.current = true;
+
       fetchAllFromSupabase()
-        .then((remote) => {
-          if (remote) {
-            if (remote.companyProfile) setCompanyProfile(remote.companyProfile);
-            if (remote.expenseCategories && remote.expenseCategories.length > 0) setExpenseCategories(remote.expenseCategories);
-            if (remote.customExchangeRates) setCustomExchangeRates(remote.customExchangeRates as any);
-            if (remote.invoices && remote.invoices.length > 0) setInvoices(remote.invoices);
-            if (remote.customers && remote.customers.length > 0) setCustomers(remote.customers);
-            if (remote.expenses && remote.expenses.length > 0) setExpenses(remote.expenses);
-            if (remote.employees && remote.employees.length > 0) setEmployees(remote.employees);
-            if (remote.bankAccounts && remote.bankAccounts.length > 0) setBankAccounts(remote.bankAccounts);
-            if (remote.bankTransactions && remote.bankTransactions.length > 0) setBankTransactions(remote.bankTransactions);
-            if (remote.accounts && remote.accounts.length > 0) setAccounts(remote.accounts);
-            if (remote.attendances && remote.attendances.length > 0) setAttendances(remote.attendances);
-            if (remote.leaveRequests && remote.leaveRequests.length > 0) setLeaveRequests(remote.leaveRequests);
-            if (remote.assets && remote.assets.length > 0) setAssets(remote.assets);
-            if (remote.payrollPeriods && remote.payrollPeriods.length > 0) setPayrollPeriods(remote.payrollPeriods);
+        .then((result) => {
+          if (result.tablesMissing) {
+            setAutoSyncStatus('tables_needed');
+            setAutoSyncError('Database tables not found in Supabase. Run the SQL schema script in Supabase SQL Editor.');
+            isInitialHydrated.current = true;
+            return;
           }
+
+          if (result.data) {
+            const remote = result.data;
+            const hasRemoteData = 
+              (remote.invoices && remote.invoices.length > 0) ||
+              (remote.expenses && remote.expenses.length > 0) ||
+              (remote.employees && remote.employees.length > 0) ||
+              !!remote.companyProfile;
+
+            if (hasRemoteData) {
+              if (remote.companyProfile) setCompanyProfile(remote.companyProfile);
+              if (remote.expenseCategories && remote.expenseCategories.length > 0) setExpenseCategories(remote.expenseCategories);
+              if (remote.customExchangeRates) setCustomExchangeRates(remote.customExchangeRates as any);
+              if (remote.invoices && remote.invoices.length > 0) setInvoices(remote.invoices);
+              if (remote.customers && remote.customers.length > 0) setCustomers(remote.customers);
+              if (remote.expenses && remote.expenses.length > 0) setExpenses(remote.expenses);
+              if (remote.employees && remote.employees.length > 0) setEmployees(remote.employees);
+              if (remote.bankAccounts && remote.bankAccounts.length > 0) setBankAccounts(remote.bankAccounts);
+              if (remote.bankTransactions && remote.bankTransactions.length > 0) setBankTransactions(remote.bankTransactions);
+              if (remote.accounts && remote.accounts.length > 0) setAccounts(remote.accounts);
+              if (remote.attendances && remote.attendances.length > 0) setAttendances(remote.attendances);
+              if (remote.leaveRequests && remote.leaveRequests.length > 0) setLeaveRequests(remote.leaveRequests);
+              if (remote.assets && remote.assets.length > 0) setAssets(remote.assets);
+              if (remote.payrollPeriods && remote.payrollPeriods.length > 0) setPayrollPeriods(remote.payrollPeriods);
+            }
+
+            setAutoSyncStatus('synced');
+            setLastSyncedAt(new Date());
+            setAutoSyncError(null);
+          } else {
+            setAutoSyncStatus('idle');
+          }
+          isInitialHydrated.current = true;
         })
-        .catch((err) => console.warn('Supabase auto-fetch failed:', err))
-        .finally(() => setIsSupabaseSyncing(false));
+        .catch((err) => {
+          console.warn('Supabase auto-fetch failed:', err);
+          setAutoSyncStatus('error');
+          setAutoSyncError(err.message || 'Failed to connect to Supabase');
+          isInitialHydrated.current = true;
+        })
+        .finally(() => {
+          setIsSupabaseSyncing(false);
+          isPullingRemote.current = false;
+        });
+    } else {
+      isInitialHydrated.current = true;
+      setAutoSyncStatus('idle');
     }
   }, [isSupabaseActive]);
 
   const syncToSupabase = async () => {
     setIsSupabaseSyncing(true);
     try {
-      return await syncAllToSupabase({
+      const res = await syncAllToSupabase({
         companyProfile,
         expenseCategories,
         customExchangeRates,
@@ -332,6 +441,19 @@ export const ErpProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         assets,
         payrollPeriods,
       });
+
+      if (res.success) {
+        setAutoSyncStatus('synced');
+        setLastSyncedAt(new Date());
+        setAutoSyncError(null);
+      } else if (res.tablesMissing) {
+        setAutoSyncStatus('tables_needed');
+        setAutoSyncError(res.message);
+      } else {
+        setAutoSyncStatus('error');
+        setAutoSyncError(res.message);
+      }
+      return res;
     } finally {
       setIsSupabaseSyncing(false);
     }
@@ -339,10 +461,17 @@ export const ErpProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const pullFromSupabase = async () => {
     setIsSupabaseSyncing(true);
+    isPullingRemote.current = true;
     try {
-      const remote = await fetchAllFromSupabase();
+      const result = await fetchAllFromSupabase();
+      if (result.tablesMissing) {
+        setAutoSyncStatus('tables_needed');
+        setAutoSyncError('Database tables not found in Supabase.');
+        return { success: false, tablesMissing: true, message: 'Database tables not found in Supabase. Please run the SQL schema script.' };
+      }
+      const remote = result.data;
       if (!remote) {
-        return { success: false, message: 'Could not fetch data from Supabase. Verify table schema and network.' };
+        return { success: false, message: result.error || 'Could not fetch data from Supabase. Verify table schema and network.' };
       }
       if (remote.companyProfile) setCompanyProfile(remote.companyProfile);
       if (remote.expenseCategories && remote.expenseCategories.length > 0) setExpenseCategories(remote.expenseCategories);
@@ -358,13 +487,96 @@ export const ErpProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (remote.leaveRequests && remote.leaveRequests.length > 0) setLeaveRequests(remote.leaveRequests);
       if (remote.assets && remote.assets.length > 0) setAssets(remote.assets);
       if (remote.payrollPeriods && remote.payrollPeriods.length > 0) setPayrollPeriods(remote.payrollPeriods);
+
+      setAutoSyncStatus('synced');
+      setLastSyncedAt(new Date());
+      setAutoSyncError(null);
       return { success: true, message: 'Latest data pulled from Supabase successfully!' };
     } catch (err: any) {
+      setAutoSyncStatus('error');
+      setAutoSyncError(err.message || 'Failed to pull data from Supabase');
       return { success: false, message: err.message || 'Failed to pull data from Supabase' };
     } finally {
       setIsSupabaseSyncing(false);
+      isPullingRemote.current = false;
     }
   };
+
+  const retryAutoSync = async () => {
+    await syncToSupabase();
+  };
+
+  // Automatic Debounced Cloud Sync when local ERP records are added or modified
+  useEffect(() => {
+    // Skip if initial fetch is running or auto-sync disabled or not active
+    if (!isInitialHydrated.current || isPullingRemote.current) return;
+    if (!isSupabaseActive || !isAutoSyncEnabled) return;
+    if (autoSyncStatus === 'tables_needed') return; // Do not spam requests if tables missing
+
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+
+    debounceTimerRef.current = setTimeout(async () => {
+      setAutoSyncStatus('syncing');
+      try {
+        const res = await syncAllToSupabase({
+          companyProfile,
+          expenseCategories,
+          customExchangeRates,
+          invoices,
+          customers,
+          expenses,
+          accounts,
+          bankAccounts,
+          bankTransactions,
+          employees,
+          attendances,
+          leaveRequests,
+          assets,
+          payrollPeriods,
+        });
+
+        if (res.success) {
+          setAutoSyncStatus('synced');
+          setLastSyncedAt(new Date());
+          setAutoSyncError(null);
+        } else if (res.tablesMissing) {
+          setAutoSyncStatus('tables_needed');
+          setAutoSyncError(res.message);
+        } else {
+          setAutoSyncStatus('error');
+          setAutoSyncError(res.message);
+        }
+      } catch (err: any) {
+        setAutoSyncStatus('error');
+        setAutoSyncError(err.message || 'Auto-sync failed');
+      }
+    }, 1500);
+
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, [
+    invoices,
+    customers,
+    expenses,
+    accounts,
+    bankAccounts,
+    bankTransactions,
+    employees,
+    attendances,
+    leaveRequests,
+    assets,
+    payrollPeriods,
+    companyProfile,
+    expenseCategories,
+    customExchangeRates,
+    isSupabaseActive,
+    isAutoSyncEnabled
+  ]);
 
   // Clear legacy cached dummy data and enforce clean empty state
   useEffect(() => {
@@ -528,6 +740,9 @@ export const ErpProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const deleteExpense = (id: string) => {
     setExpenses(prev => prev.filter(e => e.id !== id));
+    if (isSupabaseActive) {
+      deleteRecordFromSupabase('expenses', id).catch(console.warn);
+    }
   };
 
   // Accounts Handlers
@@ -779,8 +994,19 @@ export const ErpProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setGlobalSearch,
         isSupabaseActive,
         isSupabaseSyncing,
+        autoSyncStatus,
+        lastSyncedAt,
+        autoSyncError,
+        isAutoSyncEnabled,
+        setIsAutoSyncEnabled,
         syncToSupabase,
         pullFromSupabase,
+        retryAutoSync,
+        isAuthenticated,
+        login,
+        logout,
+        adminCredentials,
+        updateAdminPassword,
       }}
     >
       {children}

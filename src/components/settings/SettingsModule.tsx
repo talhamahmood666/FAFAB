@@ -25,12 +25,19 @@ import {
   Copy,
   ExternalLink,
   Server,
-  Loader2
+  Loader2,
+  Zap,
+  AlertTriangle
 } from 'lucide-react';
 import { useErp } from '../../context/ErpContext';
 import { SupportedCurrency, DEFAULT_CURRENCIES } from '../../utils/currency';
 import { getSupabaseConfig } from '../../lib/supabase';
-import { testSupabaseConnection } from '../../services/supabaseService';
+import { 
+  testSupabaseConnection, 
+  SUPABASE_SCHEMA_SQL, 
+  getSupabaseProjectRef, 
+  SupabaseTestResult 
+} from '../../services/supabaseService';
 
 export const SettingsModule: React.FC = () => {
   const { 
@@ -55,18 +62,31 @@ export const SettingsModule: React.FC = () => {
     setExchangeRate,
     isSupabaseActive,
     isSupabaseSyncing,
+    autoSyncStatus,
+    lastSyncedAt,
+    autoSyncError,
+    isAutoSyncEnabled,
+    setIsAutoSyncEnabled,
     syncToSupabase,
-    pullFromSupabase
+    pullFromSupabase,
+    retryAutoSync,
+    adminCredentials,
+    updateAdminPassword
   } = useErp();
 
   const [activeTab, setActiveTab] = useState<'profile' | 'categories' | 'currency' | 'backup' | 'supabase'>('profile');
 
+  // Admin Password State
+  const [newAdminPassword, setNewAdminPassword] = useState('');
+  const [passwordSuccessMessage, setPasswordSuccessMessage] = useState('');
+
   // Supabase UI state
-  const [supabaseTestStatus, setSupabaseTestStatus] = useState<{ loading: boolean; result?: { success: boolean; message: string } }>({ loading: false });
+  const [supabaseTestStatus, setSupabaseTestStatus] = useState<{ loading: boolean; result?: SupabaseTestResult }>({ loading: false });
   const [supabaseActionStatus, setSupabaseActionStatus] = useState<{ loading: boolean; message?: string; isError?: boolean }>({ loading: false });
   const [copiedSql, setCopiedSql] = useState(false);
   const [showSqlPreview, setShowSqlPreview] = useState(false);
   const supabaseConfig = getSupabaseConfig();
+  const projectRef = getSupabaseProjectRef(supabaseConfig.url);
 
   // Company Profile Form State
   const [profileForm, setProfileForm] = useState({ ...companyProfile });
@@ -585,6 +605,62 @@ export const SettingsModule: React.FC = () => {
             </div>
           </div>
 
+          {/* Single Admin Security Card */}
+          <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-4">
+            <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
+              <ShieldCheck className="w-5 h-5 text-emerald-600" />
+              <div>
+                <h3 className="font-bold text-slate-900 text-sm">Single Root Administrator Security</h3>
+                <p className="text-[11px] text-slate-500">Configure login credentials for the sole authorized ERP administrator account.</p>
+              </div>
+            </div>
+
+            {passwordSuccessMessage && (
+              <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-xs text-emerald-800 font-medium flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span>{passwordSuccessMessage}</span>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+              <div>
+                <label className="font-semibold text-slate-700 block mb-1">Registered Administrator User</label>
+                <div className="p-2.5 bg-slate-100 border border-slate-200 rounded-lg font-mono font-bold text-slate-800">
+                  {adminCredentials.username} (or "admin")
+                </div>
+                <p className="text-[10px] text-slate-400 mt-1">Single-user architecture. Only this identity can log in.</p>
+              </div>
+
+              <div>
+                <label className="font-semibold text-slate-700 block mb-1">Update Admin Passphrase</label>
+                <div className="flex gap-2">
+                  <input
+                    type="password"
+                    value={newAdminPassword}
+                    onChange={(e) => setNewAdminPassword(e.target.value)}
+                    placeholder="Enter new admin passphrase..."
+                    className="flex-1 p-2.5 bg-slate-50 border border-slate-300 rounded-lg focus:bg-white text-slate-900 font-mono text-xs"
+                  />
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      if (!newAdminPassword.trim()) return;
+                      updateAdminPassword(newAdminPassword.trim());
+                      setNewAdminPassword('');
+                      setPasswordSuccessMessage('Administrator security passphrase updated successfully!');
+                      setTimeout(() => setPasswordSuccessMessage(''), 4000);
+                    }}
+                    className="px-4 py-2.5 bg-slate-900 hover:bg-black text-white font-bold rounded-lg transition-colors cursor-pointer shrink-0"
+                  >
+                    Update
+                  </button>
+                </div>
+                <p className="text-[10px] text-slate-400 mt-1">Used on the Brutalist Login Gate.</p>
+              </div>
+            </div>
+          </div>
+
           <div className="flex justify-end">
             <button
               type="submit"
@@ -954,10 +1030,15 @@ export const SettingsModule: React.FC = () => {
                     }`}>
                       {isSupabaseActive ? 'CONNECTED' : 'NOT CONFIGURED'}
                     </span>
+                    {projectRef && (
+                      <span className="hidden md:inline px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-mono text-[10px] font-bold">
+                        Project: {projectRef}
+                      </span>
+                    )}
                   </div>
                   <p className="text-xs text-slate-600 mt-0.5">
                     {isSupabaseActive
-                      ? `Syncing live with Supabase project (${supabaseConfig.url}). Invoices and ERP data persist centrally.`
+                      ? `Connected to Supabase project (${supabaseConfig.url}). Real-time multi-user persistence for Vercel.`
                       : 'Running in browser localStorage mode. Connect Supabase to persist and sync records across all devices and team members on Vercel.'}
                   </p>
                 </div>
@@ -973,7 +1054,7 @@ export const SettingsModule: React.FC = () => {
                       const res = await testSupabaseConnection();
                       setSupabaseTestStatus({ loading: false, result: res });
                     }}
-                    className="px-3 py-1.5 bg-white border border-emerald-300 hover:bg-emerald-50 text-emerald-800 font-semibold text-xs rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer"
+                    className="px-3 py-1.5 bg-white border border-emerald-300 hover:bg-emerald-50 text-emerald-800 font-semibold text-xs rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
                   >
                     {supabaseTestStatus.loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Server className="w-3.5 h-3.5" />}
                     <span>Test Connection</span>
@@ -984,29 +1065,209 @@ export const SettingsModule: React.FC = () => {
 
             {/* Test result banner */}
             {supabaseTestStatus.result && (
-              <div className={`mt-3 p-3 rounded-lg text-xs font-medium flex items-center gap-2 ${
+              <div className={`mt-3 p-3.5 rounded-xl text-xs font-medium flex items-start gap-2.5 ${
                 supabaseTestStatus.result.success
                   ? 'bg-emerald-100 text-emerald-900 border border-emerald-300'
-                  : 'bg-rose-100 text-rose-900 border border-rose-300'
+                  : supabaseTestStatus.result.tablesMissing
+                    ? 'bg-amber-100 text-amber-950 border border-amber-300'
+                    : 'bg-rose-100 text-rose-900 border border-rose-300'
               }`}>
                 {supabaseTestStatus.result.success ? (
-                  <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0" />
+                  <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
+                ) : supabaseTestStatus.result.tablesMissing ? (
+                  <AlertTriangle className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
                 ) : (
-                  <AlertCircle className="w-4 h-4 text-rose-700 shrink-0" />
+                  <AlertCircle className="w-4 h-4 text-rose-700 shrink-0 mt-0.5" />
                 )}
-                <span>{supabaseTestStatus.result.message}</span>
+                <div className="flex-1 space-y-1">
+                  <p className="font-semibold">{supabaseTestStatus.result.message}</p>
+                </div>
               </div>
             )}
           </div>
 
-          {/* Sync Actions (if active) */}
-          {isSupabaseActive && (
-            <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-4">
-              <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
-                <RefreshCw className="w-5 h-5 text-emerald-600" />
+          {/* MISSING TABLES CALLOUT (Shown if tables are not initialized in Supabase) */}
+          {isSupabaseActive && (supabaseTestStatus.result?.tablesMissing || autoSyncStatus === 'tables_needed') && (
+            <div className="p-6 bg-amber-50 border-2 border-amber-400 rounded-2xl shadow-sm space-y-4">
+              <div className="flex items-start gap-3">
+                <div className="w-9 h-9 rounded-xl bg-amber-400 text-black flex items-center justify-center shrink-0 font-bold">
+                  <AlertTriangle className="w-5 h-5 text-black" />
+                </div>
                 <div>
-                  <h3 className="font-bold text-slate-900 text-sm">Cloud Synchronization Controls</h3>
-                  <p className="text-[11px] text-slate-500">Migrate or pull corporate ERP records between this browser and Supabase PostgreSQL.</p>
+                  <h4 className="font-black text-slate-900 text-sm tracking-wide">
+                    ACTION REQUIRED: INITIALIZE DATABASE TABLES IN SUPABASE
+                  </h4>
+                  <p className="text-xs text-slate-700 mt-1">
+                    Your Supabase project is connected, but PostgreSQL tables (like <code className="bg-amber-200/60 px-1 py-0.5 rounded font-mono font-bold text-black">system_settings</code>, <code className="bg-amber-200/60 px-1 py-0.5 rounded font-mono font-bold text-black">invoices</code>, and <code className="bg-amber-200/60 px-1 py-0.5 rounded font-mono font-bold text-black">expenses</code>) have not been created yet.
+                  </p>
+                  <p className="text-xs text-slate-700 mt-0.5">
+                    Supabase returned: <span className="font-mono text-amber-900 font-semibold bg-white/70 px-1.5 py-0.5 rounded">Could not find the table 'public.system_settings' in the schema cache</span>.
+                  </p>
+                </div>
+              </div>
+
+              {/* Action buttons */}
+              <div className="flex flex-wrap items-center gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(SUPABASE_SCHEMA_SQL);
+                    setCopiedSql(true);
+                    setTimeout(() => setCopiedSql(false), 3000);
+                  }}
+                  className="px-4 py-2 bg-black hover:bg-slate-800 text-amber-400 font-black text-xs rounded-xl flex items-center gap-2 transition-all cursor-pointer shadow-sm"
+                >
+                  {copiedSql ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
+                  <span>{copiedSql ? 'SQL Script Copied to Clipboard!' : '1. Copy Complete SQL Schema Script'}</span>
+                </button>
+
+                <a
+                  href={`https://supabase.com/dashboard/project/${projectRef || 'ysotolpebceouisyehlr'}/sql/new`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 transition-colors shadow-sm"
+                >
+                  <span>2. Open Supabase SQL Editor ({projectRef || 'ysotolpebceouisyehlr'})</span>
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </a>
+
+                <button
+                  type="button"
+                  disabled={supabaseTestStatus.loading}
+                  onClick={async () => {
+                    setSupabaseTestStatus({ loading: true });
+                    const res = await testSupabaseConnection();
+                    setSupabaseTestStatus({ loading: false, result: res });
+                    if (res.success) {
+                      await retryAutoSync();
+                    }
+                  }}
+                  className="px-4 py-2 bg-white border border-slate-300 hover:bg-slate-50 text-slate-800 font-bold text-xs rounded-xl flex items-center gap-1.5 transition-colors cursor-pointer"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  <span>3. Re-test & Verify Connection</span>
+                </button>
+              </div>
+
+              {/* 30-Second Quick Instructions */}
+              <div className="p-3.5 bg-white/80 rounded-xl border border-amber-300 text-xs text-slate-800 space-y-1.5">
+                <div className="font-bold text-slate-900">How to run in 30 seconds:</div>
+                <ol className="list-decimal list-inside space-y-1 text-slate-700 text-[11px]">
+                  <li>Click <strong>Copy Complete SQL Schema Script</strong> above.</li>
+                  <li>Click <strong>Open Supabase SQL Editor</strong> to open your project's query editor.</li>
+                  <li>Paste the script (Ctrl+V / Cmd+V) and click the green <strong>Run</strong> button.</li>
+                  <li>Return here and click <strong>Re-test & Verify Connection</strong>. All 12 tables will be ready and auto-sync will begin immediately!</li>
+                </ol>
+              </div>
+            </div>
+          )}
+
+          {/* AUTOMATIC CLOUD SYNC CONTROLS */}
+          {isSupabaseActive && (
+            <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-5">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0">
+                    <Zap className="w-5 h-5 text-emerald-700" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-bold text-slate-900 text-sm">Automatic Background Cloud Synchronization</h3>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
+                        {isAutoSyncEnabled ? 'ENABLED (LIVE)' : 'PAUSED'}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-500 mt-0.5">
+                      Invoices, expenses, payroll, and settings automatically synchronize to Supabase PostgreSQL without needing manual button clicks.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Toggle Auto Sync */}
+                <div className="flex items-center gap-2">
+                  <label className="text-xs font-semibold text-slate-700 cursor-pointer flex items-center gap-2">
+                    <span>Auto-Sync:</span>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={isAutoSyncEnabled}
+                      onClick={() => setIsAutoSyncEnabled(!isAutoSyncEnabled)}
+                      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                        isAutoSyncEnabled ? 'bg-emerald-600' : 'bg-slate-300'
+                      }`}
+                    >
+                      <span
+                        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                          isAutoSyncEnabled ? 'translate-x-5' : 'translate-x-0'
+                        }`}
+                      />
+                    </button>
+                  </label>
+                </div>
+              </div>
+
+              {/* Real-time Status Card */}
+              <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-xs">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-slate-500 font-medium">Sync Status:</span>
+                    {autoSyncStatus === 'synced' ? (
+                      <span className="inline-flex items-center gap-1.5 font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                        Synchronized with Supabase Cloud
+                      </span>
+                    ) : autoSyncStatus === 'syncing' || isSupabaseSyncing ? (
+                      <span className="inline-flex items-center gap-1.5 font-bold text-amber-700 bg-amber-100 px-2 py-0.5 rounded">
+                        <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-600" />
+                        Synchronizing changes in background...
+                      </span>
+                    ) : autoSyncStatus === 'tables_needed' ? (
+                      <span className="inline-flex items-center gap-1.5 font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded">
+                        <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
+                        Awaiting Table Creation in Supabase
+                      </span>
+                    ) : autoSyncStatus === 'error' ? (
+                      <span className="inline-flex items-center gap-1.5 font-bold text-rose-700 bg-rose-100 px-2 py-0.5 rounded">
+                        <AlertCircle className="w-3.5 h-3.5 text-rose-600" />
+                        {autoSyncError || 'Sync Error'}
+                      </span>
+                    ) : (
+                      <span className="font-bold text-slate-700">Idle / Ready</span>
+                    )}
+                  </div>
+                  <div className="text-[11px] text-slate-500">
+                    Last automatic sync: <strong>{lastSyncedAt ? lastSyncedAt.toLocaleTimeString() : 'Pending first sync'}</strong>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    disabled={isSupabaseSyncing}
+                    onClick={async () => {
+                      setSupabaseActionStatus({ loading: true });
+                      const res = await syncToSupabase();
+                      setSupabaseActionStatus({ loading: false, message: res.message, isError: !res.success });
+                    }}
+                    className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg shadow-xs flex items-center gap-1.5 transition-colors cursor-pointer text-xs"
+                  >
+                    {isSupabaseSyncing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+                    <span>Force Push Now</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    disabled={isSupabaseSyncing}
+                    onClick={async () => {
+                      setSupabaseActionStatus({ loading: true });
+                      const res = await pullFromSupabase();
+                      setSupabaseActionStatus({ loading: false, message: res.message, isError: !res.success });
+                    }}
+                    className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg shadow-xs flex items-center gap-1.5 transition-colors cursor-pointer text-xs"
+                  >
+                    {isSupabaseSyncing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+                    <span>Pull Latest Cloud Data</span>
+                  </button>
                 </div>
               </div>
 
@@ -1024,52 +1285,6 @@ export const SettingsModule: React.FC = () => {
                   <span>{supabaseActionStatus.message}</span>
                 </div>
               )}
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-                <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
-                  <div>
-                    <h4 className="font-bold text-slate-900">Push Local Data to Supabase</h4>
-                    <p className="text-slate-500 text-[11px] mt-1">
-                      Upload all {invoices.length} invoices, {expenses.length} vouchers, {employees.length} employee records, and company settings from this browser to your Supabase tables.
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    disabled={isSupabaseSyncing}
-                    onClick={async () => {
-                      setSupabaseActionStatus({ loading: true });
-                      const res = await syncToSupabase();
-                      setSupabaseActionStatus({ loading: false, message: res.message, isError: !res.success });
-                    }}
-                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg shadow-xs flex items-center gap-1.5 transition-colors cursor-pointer"
-                  >
-                    {isSupabaseSyncing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
-                    <span>Push All to Supabase</span>
-                  </button>
-                </div>
-
-                <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
-                  <div>
-                    <h4 className="font-bold text-slate-900">Pull Cloud Data from Supabase</h4>
-                    <p className="text-slate-500 text-[11px] mt-1">
-                      Fetch and replace local records with the latest live data stored in your central Supabase PostgreSQL database.
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    disabled={isSupabaseSyncing}
-                    onClick={async () => {
-                      setSupabaseActionStatus({ loading: true });
-                      const res = await pullFromSupabase();
-                      setSupabaseActionStatus({ loading: false, message: res.message, isError: !res.success });
-                    }}
-                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg shadow-xs flex items-center gap-1.5 transition-colors cursor-pointer"
-                  >
-                    {isSupabaseSyncing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
-                    <span>Pull Latest from Supabase</span>
-                  </button>
-                </div>
-              </div>
             </div>
           )}
 
@@ -1077,16 +1292,16 @@ export const SettingsModule: React.FC = () => {
           <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-5">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div>
-                <h3 className="font-bold text-slate-900 text-sm">How to Connect Supabase with FAFAB ERP on Vercel</h3>
-                <p className="text-[11px] text-slate-500">Takes less than 3 minutes. Your app code is already fully configured for Supabase.</p>
+                <h3 className="font-bold text-slate-900 text-sm">Supabase Setup & Migration Guide</h3>
+                <p className="text-[11px] text-slate-500">Everything needed to initialize or verify PostgreSQL tables for FAFAB Limited ERP.</p>
               </div>
               <a
-                href="https://supabase.com/dashboard"
+                href={`https://supabase.com/dashboard/project/${projectRef || 'ysotolpebceouisyehlr'}/sql/new`}
                 target="_blank"
                 rel="noreferrer"
                 className="text-xs font-semibold text-emerald-600 hover:text-emerald-700 flex items-center gap-1"
               >
-                <span>Open Supabase</span>
+                <span>Open SQL Editor</span>
                 <ExternalLink className="w-3.5 h-3.5" />
               </a>
             </div>
@@ -1096,9 +1311,10 @@ export const SettingsModule: React.FC = () => {
               <div className="flex gap-3">
                 <span className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-800 font-bold flex items-center justify-center shrink-0">1</span>
                 <div className="space-y-1">
-                  <h4 className="font-bold text-slate-900">Create a Project on Supabase</h4>
+                  <h4 className="font-bold text-slate-900">Your Supabase Project</h4>
                   <p className="text-slate-600">
-                    Sign in to <a href="https://supabase.com" target="_blank" rel="noreferrer" className="text-emerald-600 underline font-semibold">supabase.com</a> (free tier available) and click <strong>New project</strong>. Name it e.g. <code className="bg-slate-100 px-1 py-0.5 rounded text-emerald-700 font-mono">fafab-erp</code>.
+                    Connected project URL: <code className="bg-slate-100 px-1 py-0.5 rounded text-emerald-700 font-mono font-semibold">{supabaseConfig.url || 'Not set'}</code>
+                    {projectRef && <> (Project Reference: <strong className="text-slate-900 font-mono">{projectRef}</strong>)</>}
                   </p>
                 </div>
               </div>
@@ -1109,168 +1325,44 @@ export const SettingsModule: React.FC = () => {
                 <div className="space-y-2 flex-1">
                   <h4 className="font-bold text-slate-900">Run the Database Schema in Supabase SQL Editor</h4>
                   <p className="text-slate-600">
-                    In your Supabase project dashboard, open the <strong>SQL Editor</strong> tab on the left, click <strong>New Query</strong>, paste our schema script, and click <strong>Run</strong>.
+                    Open the <strong>SQL Editor</strong> in your Supabase dashboard, click <strong>New Query</strong>, paste the complete schema script, and click <strong>Run</strong>.
                   </p>
                   <div className="flex flex-wrap items-center gap-2 pt-1">
                     <button
                       type="button"
                       onClick={() => {
-                        const sql = `-- ============================================================
--- FAFAB LIMITED ERP — Supabase PostgreSQL Database Schema
--- Run in Supabase SQL Editor
--- ============================================================
-CREATE TABLE IF NOT EXISTS system_settings (
-    key TEXT PRIMARY KEY,
-    value JSONB NOT NULL,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
-);
-ALTER TABLE system_settings ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Public full access to system_settings" ON system_settings;
-CREATE POLICY "Public full access to system_settings" ON system_settings FOR ALL USING (true) WITH CHECK (true);
-
-CREATE TABLE IF NOT EXISTS invoices (
-    id TEXT PRIMARY KEY,
-    invoice_number TEXT NOT NULL,
-    customer_id TEXT,
-    customer_name TEXT NOT NULL,
-    date TEXT NOT NULL,
-    due_date TEXT NOT NULL,
-    status TEXT NOT NULL,
-    currency TEXT DEFAULT 'PKR',
-    exchange_rate NUMERIC DEFAULT 1.0,
-    items JSONB DEFAULT '[]'::jsonb,
-    subtotal NUMERIC DEFAULT 0,
-    pra_tax_amount NUMERIC DEFAULT 0,
-    fbr_wh_tax_amount NUMERIC DEFAULT 0,
-    total_amount NUMERIC DEFAULT 0,
-    amount_paid NUMERIC DEFAULT 0,
-    balance_due NUMERIC DEFAULT 0,
-    payments JSONB DEFAULT '[]'::jsonb,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
-);
-ALTER TABLE invoices ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Public full access to invoices" ON invoices;
-CREATE POLICY "Public full access to invoices" ON invoices FOR ALL USING (true) WITH CHECK (true);
-
-CREATE TABLE IF NOT EXISTS customers (
-    id TEXT PRIMARY KEY,
-    customer_code TEXT NOT NULL,
-    name TEXT NOT NULL,
-    company TEXT,
-    ntn TEXT,
-    strn TEXT,
-    email TEXT,
-    phone TEXT,
-    address TEXT,
-    city TEXT,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
-);
-ALTER TABLE customers ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Public full access to customers" ON customers;
-CREATE POLICY "Public full access to customers" ON customers FOR ALL USING (true) WITH CHECK (true);
-
-CREATE TABLE IF NOT EXISTS expenses (
-    id TEXT PRIMARY KEY,
-    expense_number TEXT NOT NULL,
-    title TEXT NOT NULL,
-    category TEXT NOT NULL,
-    amount NUMERIC NOT NULL,
-    date TEXT NOT NULL,
-    payment_method TEXT,
-    paid_to TEXT,
-    tax_deducted NUMERIC DEFAULT 0,
-    description TEXT,
-    status TEXT DEFAULT 'APPROVED',
-    reference_number TEXT,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
-);
-ALTER TABLE expenses ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Public full access to expenses" ON expenses;
-CREATE POLICY "Public full access to expenses" ON expenses FOR ALL USING (true) WITH CHECK (true);
-
-CREATE TABLE IF NOT EXISTS employees (
-    id TEXT PRIMARY KEY,
-    employee_code TEXT NOT NULL,
-    first_name TEXT NOT NULL,
-    last_name TEXT NOT NULL,
-    email TEXT,
-    phone TEXT,
-    department TEXT,
-    designation TEXT,
-    joining_date TEXT,
-    basic_salary NUMERIC DEFAULT 0,
-    gross_salary NUMERIC DEFAULT 0,
-    allowances JSONB DEFAULT '{}'::jsonb,
-    deductions JSONB DEFAULT '{}'::jsonb,
-    bank_details JSONB DEFAULT '{}'::jsonb,
-    ntn TEXT,
-    cnic TEXT,
-    status TEXT DEFAULT 'ACTIVE',
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
-);
-ALTER TABLE employees ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Public full access to employees" ON employees;
-CREATE POLICY "Public full access to employees" ON employees FOR ALL USING (true) WITH CHECK (true);
-
-CREATE TABLE IF NOT EXISTS bank_accounts (
-    id TEXT PRIMARY KEY,
-    bank_name TEXT NOT NULL,
-    account_title TEXT NOT NULL,
-    account_number TEXT NOT NULL,
-    iban TEXT,
-    branch TEXT,
-    current_balance NUMERIC DEFAULT 0,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
-);
-ALTER TABLE bank_accounts ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Public full access to bank_accounts" ON bank_accounts;
-CREATE POLICY "Public full access to bank_accounts" ON bank_accounts FOR ALL USING (true) WITH CHECK (true);
-
-CREATE TABLE IF NOT EXISTS bank_transactions (
-    id TEXT PRIMARY KEY,
-    account_id TEXT NOT NULL,
-    date TEXT NOT NULL,
-    type TEXT NOT NULL,
-    description TEXT,
-    amount NUMERIC NOT NULL,
-    balance_after NUMERIC NOT NULL,
-    reference_no TEXT,
-    status TEXT DEFAULT 'POSTED',
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
-);
-ALTER TABLE bank_transactions ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Public full access to bank_transactions" ON bank_transactions;
-CREATE POLICY "Public full access to bank_transactions" ON bank_transactions FOR ALL USING (true) WITH CHECK (true);`;
-
-                        navigator.clipboard.writeText(sql);
+                        navigator.clipboard.writeText(SUPABASE_SCHEMA_SQL);
                         setCopiedSql(true);
                         setTimeout(() => setCopiedSql(false), 3000);
                       }}
-                      className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer"
+                      className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
                     >
                       {copiedSql ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                      <span>{copiedSql ? 'SQL Copied to Clipboard!' : 'Copy SQL Schema Script'}</span>
+                      <span>{copiedSql ? 'SQL Copied to Clipboard!' : 'Copy 1-Click Complete SQL Script'}</span>
                     </button>
+
+                    <a
+                      href={`https://supabase.com/dashboard/project/${projectRef || 'ysotolpebceouisyehlr'}/sql/new`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold rounded-lg flex items-center gap-1 transition-colors"
+                    >
+                      <span>Open SQL Editor Tab</span>
+                      <ExternalLink className="w-3.5 h-3.5" />
+                    </a>
 
                     <button
                       type="button"
                       onClick={() => setShowSqlPreview(!showSqlPreview)}
                       className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-lg transition-colors cursor-pointer"
                     >
-                      {showSqlPreview ? 'Hide SQL Preview' : 'View SQL Script'}
+                      {showSqlPreview ? 'Hide SQL Preview' : 'View SQL Preview'}
                     </button>
                   </div>
 
                   {showSqlPreview && (
-                    <div className="mt-2 p-3 bg-slate-900 text-emerald-400 font-mono text-[11px] rounded-xl overflow-x-auto max-h-48">
-                      <pre>{`-- Also saved in project root as /supabase_schema.sql
-CREATE TABLE IF NOT EXISTS system_settings (key TEXT PRIMARY KEY, value JSONB NOT NULL);
-CREATE TABLE IF NOT EXISTS invoices (id TEXT PRIMARY KEY, invoice_number TEXT, total_amount NUMERIC...);
-CREATE TABLE IF NOT EXISTS customers (id TEXT PRIMARY KEY, customer_code TEXT, name TEXT...);
-CREATE TABLE IF NOT EXISTS expenses (id TEXT PRIMARY KEY, expense_number TEXT, amount NUMERIC...);
-CREATE TABLE IF NOT EXISTS employees (id TEXT PRIMARY KEY, employee_code TEXT, first_name TEXT...);
-CREATE TABLE IF NOT EXISTS bank_accounts (id TEXT PRIMARY KEY, bank_name TEXT, current_balance NUMERIC...);
-CREATE TABLE IF NOT EXISTS bank_transactions (id TEXT PRIMARY KEY, account_id TEXT, amount NUMERIC...);`}</pre>
+                    <div className="mt-2 p-3 bg-slate-900 text-emerald-400 font-mono text-[11px] rounded-xl overflow-x-auto max-h-56">
+                      <pre>{SUPABASE_SCHEMA_SQL}</pre>
                     </div>
                   )}
                 </div>
@@ -1280,18 +1372,15 @@ CREATE TABLE IF NOT EXISTS bank_transactions (id TEXT PRIMARY KEY, account_id TE
               <div className="flex gap-3">
                 <span className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-800 font-bold flex items-center justify-center shrink-0">3</span>
                 <div className="space-y-2">
-                  <h4 className="font-bold text-slate-900">Add Environment Variables in Vercel</h4>
+                  <h4 className="font-bold text-slate-900">Environment Variables in Vercel</h4>
                   <p className="text-slate-600">
-                    In your Supabase project, go to <strong>Project Settings</strong> &rarr; <strong>API</strong>. Copy your <strong>Project URL</strong> and <strong>anon / public key</strong>.
-                  </p>
-                  <p className="text-slate-600">
-                    Then in your <a href="https://vercel.com/dashboard" target="_blank" rel="noreferrer" className="text-emerald-600 underline font-semibold">Vercel Dashboard</a>:
+                    If deploying to Vercel, verify that your project settings have these two variables:
                   </p>
                   <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 font-mono text-[11px] space-y-1.5">
                     <div className="flex items-center justify-between">
                       <span className="text-slate-500 font-sans">Variable 1:</span>
                       <span className="text-emerald-700 font-bold">VITE_SUPABASE_URL</span>
-                      <span className="text-slate-400 text-[10px]">= https://xyzcompany.supabase.co</span>
+                      <span className="text-slate-400 text-[10px]">= {supabaseConfig.url || 'https://xyzcompany.supabase.co'}</span>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-slate-500 font-sans">Variable 2:</span>
@@ -1300,7 +1389,7 @@ CREATE TABLE IF NOT EXISTS bank_transactions (id TEXT PRIMARY KEY, account_id TE
                     </div>
                   </div>
                   <p className="text-slate-500 text-[11px]">
-                    After adding both variables, trigger a <strong>Redeploy</strong> in Vercel. Once deployed, all devices and users accessing your domain will instantly write to and read from your live Supabase database!
+                    Once deployed, every user and browser accessing your Vercel URL writes to and reads from your live Supabase database automatically!
                   </p>
                 </div>
               </div>

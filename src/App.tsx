@@ -20,12 +20,18 @@ import { AttendanceAndLeavesModule } from './components/hr/AttendanceAndLeavesMo
 import { AssetManagementModule } from './components/hr/AssetManagementModule';
 import { PayrollModule } from './components/payroll/PayrollModule';
 import { SettingsModule } from './components/settings/SettingsModule';
+import { BrutalistLoginPage } from './components/auth/BrutalistLoginPage';
 import { Invoice } from './types/erp';
 
 const AppContent: React.FC = () => {
-  const { activeModule, setActiveModule, selectedInvoice, setSelectedInvoice } = useErp();
+  const { activeModule, setActiveModule, selectedInvoice, setSelectedInvoice, isAuthenticated } = useErp();
   const [isInvoiceCreateOpen, setIsInvoiceCreateOpen] = useState(false);
   const [isExpenseCreateOpen, setIsExpenseCreateOpen] = useState(false);
+
+  // If not logged in as the single administrator, display the Brutalist Login Gate
+  if (!isAuthenticated) {
+    return <BrutalistLoginPage />;
+  }
 
   const handleOpenNewInvoice = () => {
     setActiveModule('invoices');

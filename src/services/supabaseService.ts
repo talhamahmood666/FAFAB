@@ -1,4 +1,4 @@
-import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { supabase, isSupabaseConfigured, getSupabaseConfig } from '../lib/supabase';
 import { 
   Account, 
   BankAccount, 
@@ -31,7 +31,218 @@ export interface SupabaseFullData {
   payrollPeriods?: PayrollPeriod[];
 }
 
-export const testSupabaseConnection = async (): Promise<{ success: boolean; message: string }> => {
+export interface SupabaseTestResult {
+  success: boolean;
+  message: string;
+  tablesMissing?: boolean;
+  projectRef?: string | null;
+}
+
+export interface SupabaseFetchResult {
+  data: SupabaseFullData | null;
+  tablesMissing?: boolean;
+  error?: string;
+}
+
+export interface SupabaseSyncResult {
+  success: boolean;
+  message: string;
+  tablesMissing?: boolean;
+}
+
+/**
+ * Extracts the project reference ID from a Supabase URL
+ * e.g. "https://ysotolpebceouisyehlr.supabase.co" -> "ysotolpebceouisyehlr"
+ */
+export const getSupabaseProjectRef = (url?: string): string | null => {
+  if (!url) return null;
+  try {
+    const parsed = new URL(url);
+    const hostParts = parsed.hostname.split('.');
+    if (hostParts.length >= 3 && hostParts[1] === 'supabase' && hostParts[2] === 'co') {
+      return hostParts[0];
+    }
+  } catch {
+    const match = url.match(/https?:\/\/([a-z0-9_-]+)\.supabase\.co/i);
+    if (match) return match[1];
+  }
+  return null;
+};
+
+/**
+ * Detects if a Supabase PostgREST error is due to non-existent tables in PostgreSQL
+ */
+export const isTableMissingError = (error: any): boolean => {
+  if (!error) return false;
+  const code = String(error.code || '');
+  const msg = String(error.message || '').toLowerCase();
+  const details = String(error.details || '').toLowerCase();
+
+  return (
+    code === 'PGRST205' ||
+    code === '42P01' ||
+    msg.includes('could not find the table') ||
+    msg.includes('schema cache') ||
+    msg.includes('relation does not exist') ||
+    details.includes('schema cache')
+  );
+};
+
+export const SUPABASE_SCHEMA_SQL = `-- ============================================================
+-- FAFAB LIMITED ERP — Supabase PostgreSQL Database Schema
+-- Run this script in your Supabase Dashboard: SQL Editor -> New Query -> Run
+-- ============================================================
+
+-- 1. General System Settings (Company Profile, Exchange Rates, Categories)
+CREATE TABLE IF NOT EXISTS system_settings (
+    key TEXT PRIMARY KEY,
+    value JSONB NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+ALTER TABLE system_settings ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Public full access to system_settings" ON system_settings;
+CREATE POLICY "Public full access to system_settings" ON system_settings FOR ALL USING (true) WITH CHECK (true);
+
+-- 2. Invoices Table
+CREATE TABLE IF NOT EXISTS invoices (
+    id TEXT PRIMARY KEY,
+    invoice_number TEXT,
+    customer_name TEXT,
+    grand_total NUMERIC,
+    status TEXT,
+    payload JSONB NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+ALTER TABLE invoices ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Public full access to invoices" ON invoices;
+CREATE POLICY "Public full access to invoices" ON invoices FOR ALL USING (true) WITH CHECK (true);
+
+-- 3. Customers Table
+CREATE TABLE IF NOT EXISTS customers (
+    id TEXT PRIMARY KEY,
+    customer_code TEXT,
+    company_name TEXT,
+    payload JSONB NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+ALTER TABLE customers ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Public full access to customers" ON customers;
+CREATE POLICY "Public full access to customers" ON customers FOR ALL USING (true) WITH CHECK (true);
+
+-- 4. Expenses Table
+CREATE TABLE IF NOT EXISTS expenses (
+    id TEXT PRIMARY KEY,
+    expense_number TEXT,
+    category TEXT,
+    amount NUMERIC,
+    date TEXT,
+    payload JSONB NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+ALTER TABLE expenses ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Public full access to expenses" ON expenses;
+CREATE POLICY "Public full access to expenses" ON expenses FOR ALL USING (true) WITH CHECK (true);
+
+-- 5. Employees Table
+CREATE TABLE IF NOT EXISTS employees (
+    id TEXT PRIMARY KEY,
+    employee_code TEXT,
+    first_name TEXT,
+    last_name TEXT,
+    gross_salary NUMERIC,
+    status TEXT,
+    payload JSONB NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+ALTER TABLE employees ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Public full access to employees" ON employees;
+CREATE POLICY "Public full access to employees" ON employees FOR ALL USING (true) WITH CHECK (true);
+
+-- 6. Bank Accounts Table
+CREATE TABLE IF NOT EXISTS bank_accounts (
+    id TEXT PRIMARY KEY,
+    bank_name TEXT,
+    account_title TEXT,
+    current_balance NUMERIC,
+    payload JSONB NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+ALTER TABLE bank_accounts ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Public full access to bank_accounts" ON bank_accounts;
+CREATE POLICY "Public full access to bank_accounts" ON bank_accounts FOR ALL USING (true) WITH CHECK (true);
+
+-- 7. Bank Transactions Table
+CREATE TABLE IF NOT EXISTS bank_transactions (
+    id TEXT PRIMARY KEY,
+    bank_account_id TEXT,
+    date TEXT,
+    reference_no TEXT,
+    payload JSONB NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+ALTER TABLE bank_transactions ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Public full access to bank_transactions" ON bank_transactions;
+CREATE POLICY "Public full access to bank_transactions" ON bank_transactions FOR ALL USING (true) WITH CHECK (true);
+
+-- 8. Chart of Accounts Table
+CREATE TABLE IF NOT EXISTS chart_of_accounts (
+    id TEXT PRIMARY KEY,
+    code TEXT,
+    name TEXT,
+    payload JSONB NOT NULL
+);
+ALTER TABLE chart_of_accounts ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Public full access to chart_of_accounts" ON chart_of_accounts;
+CREATE POLICY "Public full access to chart_of_accounts" ON chart_of_accounts FOR ALL USING (true) WITH CHECK (true);
+
+-- 9. Attendances Table
+CREATE TABLE IF NOT EXISTS attendances (
+    id TEXT PRIMARY KEY,
+    employee_id TEXT,
+    date TEXT,
+    status TEXT,
+    payload JSONB NOT NULL
+);
+ALTER TABLE attendances ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Public full access to attendances" ON attendances;
+CREATE POLICY "Public full access to attendances" ON attendances FOR ALL USING (true) WITH CHECK (true);
+
+-- 10. Leave Requests Table
+CREATE TABLE IF NOT EXISTS leave_requests (
+    id TEXT PRIMARY KEY,
+    employee_id TEXT,
+    status TEXT,
+    payload JSONB NOT NULL
+);
+ALTER TABLE leave_requests ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Public full access to leave_requests" ON leave_requests;
+CREATE POLICY "Public full access to leave_requests" ON leave_requests FOR ALL USING (true) WITH CHECK (true);
+
+-- 11. Company Assets Table
+CREATE TABLE IF NOT EXISTS company_assets (
+    id TEXT PRIMARY KEY,
+    asset_tag TEXT,
+    title TEXT,
+    payload JSONB NOT NULL
+);
+ALTER TABLE company_assets ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Public full access to company_assets" ON company_assets;
+CREATE POLICY "Public full access to company_assets" ON company_assets FOR ALL USING (true) WITH CHECK (true);
+
+-- 12. Payroll Periods Table
+CREATE TABLE IF NOT EXISTS payroll_periods (
+    id TEXT PRIMARY KEY,
+    period_name TEXT,
+    month NUMERIC,
+    year NUMERIC,
+    payload JSONB NOT NULL
+);
+ALTER TABLE payroll_periods ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Public full access to payroll_periods" ON payroll_periods;
+CREATE POLICY "Public full access to payroll_periods" ON payroll_periods FOR ALL USING (true) WITH CHECK (true);
+`;
+
+export const testSupabaseConnection = async (): Promise<SupabaseTestResult> => {
   if (!isSupabaseConfigured() || !supabase) {
     return { 
       success: false, 
@@ -39,27 +250,55 @@ export const testSupabaseConnection = async (): Promise<{ success: boolean; mess
     };
   }
 
+  const { url } = getSupabaseConfig();
+  const projectRef = getSupabaseProjectRef(url);
+
   try {
     const { error } = await supabase.from('system_settings').select('key').limit(1);
     if (error) {
-      if (error.code === '42P01') {
+      if (isTableMissingError(error)) {
         return {
           success: false,
-          message: 'Connected to Supabase, but tables do not exist yet. Please run the SQL schema script in the Supabase SQL editor.'
+          tablesMissing: true,
+          projectRef,
+          message: 'Connected to Supabase project! However, database tables do not exist yet. Please run the 1-Click SQL Schema Script in your Supabase SQL Editor.'
         };
       }
-      return { success: false, message: `Supabase error: ${error.message}` };
+      return { 
+        success: false, 
+        projectRef,
+        message: `Supabase error: ${error.message}` 
+      };
     }
-    return { success: true, message: 'Successfully connected to Supabase PostgreSQL database!' };
+    return { 
+      success: true, 
+      tablesMissing: false,
+      projectRef,
+      message: 'Successfully connected to Supabase PostgreSQL! Database tables verified and live auto-sync is active.' 
+    };
   } catch (err: any) {
-    return { success: false, message: err.message || 'Failed to connect to Supabase.' };
+    return { 
+      success: false, 
+      projectRef,
+      message: err.message || 'Failed to connect to Supabase.' 
+    };
   }
 };
 
-export const fetchAllFromSupabase = async (): Promise<SupabaseFullData | null> => {
-  if (!isSupabaseConfigured() || !supabase) return null;
+export const fetchAllFromSupabase = async (): Promise<SupabaseFetchResult> => {
+  if (!isSupabaseConfigured() || !supabase) {
+    return { data: null, error: 'Supabase not configured' };
+  }
 
   try {
+    // Check if system_settings table exists first
+    const testCheck = await supabase.from('system_settings').select('key').limit(1);
+    if (testCheck.error) {
+      if (isTableMissingError(testCheck.error)) {
+        return { data: null, tablesMissing: true, error: 'Tables missing in Supabase schema' };
+      }
+    }
+
     const [
       settingsRes,
       invoicesRes,
@@ -88,6 +327,11 @@ export const fetchAllFromSupabase = async (): Promise<SupabaseFullData | null> =
       supabase.from('payroll_periods').select('*'),
     ]);
 
+    // Check if any critical query had a table missing error
+    if (isTableMissingError(settingsRes.error) || isTableMissingError(invoicesRes.error)) {
+      return { data: null, tablesMissing: true, error: 'Tables missing in Supabase schema' };
+    }
+
     // Format settings
     let companyProfile: CompanyProfile | undefined;
     let expenseCategories: string[] | undefined;
@@ -101,7 +345,7 @@ export const fetchAllFromSupabase = async (): Promise<SupabaseFullData | null> =
       }
     }
 
-    return {
+    const data: SupabaseFullData = {
       companyProfile,
       expenseCategories,
       customExchangeRates,
@@ -117,24 +361,39 @@ export const fetchAllFromSupabase = async (): Promise<SupabaseFullData | null> =
       assets: assetsRes.data ? assetsRes.data.map((r: any) => (r.payload ? r.payload : r) as CompanyAsset) : undefined,
       payrollPeriods: payrollRes.data ? payrollRes.data.map((r: any) => (r.payload ? r.payload : r) as PayrollPeriod) : undefined,
     };
-  } catch (err) {
-    console.warn('Error fetching from Supabase:', err);
-    return null;
+
+    return { data };
+  } catch (err: any) {
+    if (isTableMissingError(err)) {
+      return { data: null, tablesMissing: true, error: err.message };
+    }
+    return { data: null, error: err.message || 'Failed to fetch from Supabase' };
   }
 };
 
-export const syncAllToSupabase = async (data: Required<SupabaseFullData>): Promise<{ success: boolean; message: string }> => {
+export const syncAllToSupabase = async (data: Required<SupabaseFullData>): Promise<SupabaseSyncResult> => {
   if (!isSupabaseConfigured() || !supabase) {
     return { success: false, message: 'Supabase credentials not configured in environment.' };
   }
 
   try {
     // 1. Settings
-    await supabase.from('system_settings').upsert([
+    const settingsRes = await supabase.from('system_settings').upsert([
       { key: 'company_profile', value: data.companyProfile },
       { key: 'expense_categories', value: data.expenseCategories },
       { key: 'custom_exchange_rates', value: data.customExchangeRates },
     ]);
+
+    if (settingsRes.error) {
+      if (isTableMissingError(settingsRes.error)) {
+        return {
+          success: false,
+          tablesMissing: true,
+          message: "Database tables not found in Supabase. Please copy and execute the SQL schema script in your Supabase SQL Editor."
+        };
+      }
+      return { success: false, message: `Failed to save settings: ${settingsRes.error.message}` };
+    }
 
     // 2. Invoices
     if (data.invoices && data.invoices.length > 0) {
@@ -146,7 +405,10 @@ export const syncAllToSupabase = async (data: Required<SupabaseFullData>): Promi
         status: inv.status,
         payload: inv,
       }));
-      await supabase.from('invoices').upsert(invoiceRows);
+      const res = await supabase.from('invoices').upsert(invoiceRows);
+      if (res.error && isTableMissingError(res.error)) {
+        return { success: false, tablesMissing: true, message: "Invoices table not found in Supabase." };
+      }
     }
 
     // 3. Customers
@@ -270,6 +532,28 @@ export const syncAllToSupabase = async (data: Required<SupabaseFullData>): Promi
 
     return { success: true, message: 'All local ERP records successfully pushed to Supabase PostgreSQL database!' };
   } catch (err: any) {
+    if (isTableMissingError(err)) {
+      return {
+        success: false,
+        tablesMissing: true,
+        message: "Database tables not found in Supabase. Please execute the SQL schema script in the Supabase SQL Editor."
+      };
+    }
     return { success: false, message: `Failed to push data to Supabase: ${err.message}` };
+  }
+};
+
+export const deleteRecordFromSupabase = async (table: string, id: string): Promise<boolean> => {
+  if (!isSupabaseConfigured() || !supabase) return false;
+  try {
+    const { error } = await supabase.from(table).delete().eq('id', id);
+    if (error) {
+      console.warn(`Supabase delete error on ${table}:`, error);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.warn(`Failed to delete record ${id} from ${table}:`, err);
+    return false;
   }
 };

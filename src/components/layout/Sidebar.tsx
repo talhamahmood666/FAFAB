@@ -14,7 +14,8 @@ import {
   ShieldCheck, 
   MapPin, 
   BadgeCheck,
-  Settings 
+  Settings,
+  LogOut 
 } from 'lucide-react';
 import { useErp } from '../../context/ErpContext';
 import { ActiveModule } from '../../types/erp';
@@ -28,7 +29,8 @@ export const Sidebar: React.FC = () => {
     invoices, 
     currentRole,
     leaveRequests,
-    companyProfile 
+    companyProfile,
+    logout
   } = useErp();
 
   const pendingInvoicesCount = invoices.filter(i => i.status === 'SENT' || i.status === 'OVERDUE').length;
@@ -243,22 +245,30 @@ export const Sidebar: React.FC = () => {
 
         {/* User Role Card */}
         <div className="p-4 border-t border-slate-800 bg-slate-900/90">
-          <div className="flex items-center space-x-3 p-2 rounded-lg bg-slate-800/70 border border-slate-700/60">
-            <div className="w-9 h-9 rounded-full bg-slate-700 flex items-center justify-center font-bold text-sm text-emerald-400 border border-slate-600">
-              {currentRole === 'ADMIN' ? 'AD' : currentRole === 'ACCOUNTANT' ? 'AC' : currentRole === 'HR_MANAGER' ? 'HR' : 'EM'}
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="text-xs font-semibold text-white truncate flex items-center space-x-1">
-                <span>Talha Mahmood</span>
-                <BadgeCheck className="w-3.5 h-3.5 text-emerald-400 inline" />
+          <div className="flex items-center justify-between p-2 rounded-lg bg-slate-800/70 border border-slate-700/60">
+            <div className="flex items-center space-x-3 min-w-0">
+              <div className="w-9 h-9 rounded-full bg-emerald-950 flex items-center justify-center font-bold text-xs text-emerald-400 border border-emerald-600/40 shrink-0">
+                ADMIN
               </div>
-              <div className="text-[11px] text-emerald-400 font-medium">
-                {currentRole === 'ADMIN' && 'Chief Financial Officer (Admin)'}
-                {currentRole === 'ACCOUNTANT' && 'Senior Accountant'}
-                {currentRole === 'HR_MANAGER' && 'HR Operations Manager'}
-                {currentRole === 'EMPLOYEE' && 'Employee Self-Service'}
+              <div className="min-w-0">
+                <div className="text-xs font-semibold text-white truncate flex items-center space-x-1">
+                  <span>Talha Mahmood</span>
+                  <BadgeCheck className="w-3.5 h-3.5 text-emerald-400 inline shrink-0" />
+                </div>
+                <div className="text-[10px] text-emerald-400 font-medium truncate">
+                  Sole Administrator (Root)
+                </div>
               </div>
             </div>
+
+            <button
+              type="button"
+              onClick={logout}
+              title="Sign out & Lock ERP"
+              className="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-slate-700/60 rounded-md transition-colors cursor-pointer shrink-0 ml-2"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
           </div>
         </div>
       </aside>
