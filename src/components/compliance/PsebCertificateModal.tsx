@@ -184,11 +184,19 @@ export const PsebCertificateModal: React.FC = () => {
                 </button>
               </div>
               <div className="flex justify-center bg-slate-50 p-2 rounded-lg border border-slate-100">
-                <img 
-                  src={companyProfile.psebCertificateDoc} 
-                  alt="Scanned PSEB Certificate" 
-                  className="max-h-[600px] object-contain rounded shadow-xs"
-                />
+                {companyProfile.psebCertificateDoc.startsWith('data:application/pdf') ? (
+                  <iframe 
+                    src={companyProfile.psebCertificateDoc} 
+                    title="Uploaded PSEB PDF Certificate" 
+                    className="w-full h-[650px] rounded border border-slate-200" 
+                  />
+                ) : (
+                  <img 
+                    src={companyProfile.psebCertificateDoc} 
+                    alt="Scanned PSEB Certificate" 
+                    className="max-h-[600px] object-contain rounded shadow-xs"
+                  />
+                )}
               </div>
             </div>
           ) : (
