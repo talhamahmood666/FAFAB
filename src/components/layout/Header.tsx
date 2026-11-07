@@ -55,8 +55,13 @@ export const Header: React.FC<HeaderProps> = ({ onOpenNewInvoice, onOpenNewExpen
             <Menu className="w-5 h-5" />
           </button>
 
-          <div className="hidden md:flex items-center space-x-2 text-xs text-slate-500 whitespace-nowrap">
-            <span className="font-semibold text-slate-800">{companyProfile.name}</span>
+          <div className="hidden md:flex items-center space-x-2.5 text-xs text-slate-500 whitespace-nowrap">
+            <img 
+              src="/assets/aistudio/00E4E085-7B00-4F64-BD05-2249D1CAA102_c81dd0be.PNG" 
+              alt="FAFAB Logo" 
+              className="w-7 h-7 rounded-full border border-amber-400/80 shadow-xs object-contain bg-slate-900 shrink-0" 
+            />
+            <span className="font-bold text-slate-900 text-sm">{companyProfile.name}</span>
             <span>•</span>
             <span className="hidden xl:flex items-center gap-1 text-slate-600">
               <Building2 className="w-3.5 h-3.5 text-emerald-600" />

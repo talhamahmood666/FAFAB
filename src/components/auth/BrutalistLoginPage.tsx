@@ -18,9 +18,9 @@ import {
 import { useErp } from '../../context/ErpContext';
 
 export const BrutalistLoginPage: React.FC = () => {
-  const { login, companyProfile } = useErp();
-  const [username, setUsername] = useState('admin@fafab.com.pk');
-  const [password, setPassword] = useState('admin');
+  const { login, companyProfile, adminCredentials } = useErp();
+  const [username, setUsername] = useState(adminCredentials.username || 'admin@fafab.com.pk');
+  const [password, setPassword] = useState(adminCredentials.password || 'admin');
   const [showPassword, setShowPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -41,15 +41,15 @@ export const BrutalistLoginPage: React.FC = () => {
   };
 
   const handleQuickFill = () => {
-    setUsername('admin@fafab.com.pk');
-    setPassword('admin');
+    setUsername(adminCredentials.username || 'admin@fafab.com.pk');
+    setPassword(adminCredentials.password || 'admin');
     setFillFeedback(true);
     setErrorMessage('');
     setTimeout(() => setFillFeedback(false), 2200);
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-between selection:bg-emerald-500 selection:text-white relative overflow-hidden font-sans">
+    <div className="h-screen max-h-screen overflow-y-auto bg-slate-950 text-slate-100 flex flex-col justify-between selection:bg-emerald-500 selection:text-white relative font-sans">
       {/* Ambient Emerald & Slate Glows */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[340px] bg-gradient-to-b from-emerald-600/20 via-teal-900/10 to-transparent blur-3xl pointer-events-none" />
       <div className="absolute -bottom-32 -right-32 w-96 h-96 bg-emerald-700/10 rounded-full blur-3xl pointer-events-none" />
@@ -64,8 +64,13 @@ export const BrutalistLoginPage: React.FC = () => {
       />
 
       {/* Top Corporate Status Bar */}
-      <header className="w-full bg-slate-900/80 backdrop-blur-md border-b border-slate-800/80 px-4 sm:px-6 py-2.5 flex items-center justify-between text-xs relative z-10">
+      <header className="w-full bg-slate-900/80 backdrop-blur-md border-b border-slate-800/80 px-4 sm:px-6 py-2.5 flex items-center justify-between text-xs relative z-10 shrink-0">
         <div className="flex items-center gap-3">
+          <img 
+            src="/assets/aistudio/00E4E085-7B00-4F64-BD05-2249D1CAA102_c81dd0be.PNG" 
+            alt="FAFAB Logo" 
+            className="w-6 h-6 rounded-full border border-amber-400/60 object-contain bg-slate-950 shrink-0" 
+          />
           <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
           <span className="font-semibold text-slate-200 tracking-wide">
             {companyProfile.name || 'FAFAB LIMITED'} · ENTERPRISE ERP GATEWAY
@@ -91,7 +96,7 @@ export const BrutalistLoginPage: React.FC = () => {
       </header>
 
       {/* Main Authentication Card */}
-      <main className="flex-1 flex items-center justify-center p-4 sm:p-6 lg:p-8 relative z-10">
+      <main className="flex-1 flex items-center justify-center p-4 sm:p-6 lg:p-8 relative z-10 my-auto">
         <div className="w-full max-w-lg">
           {/* Main Card Container */}
           <div className="bg-white text-slate-900 rounded-2xl shadow-2xl shadow-slate-950/50 border border-slate-200/80 overflow-hidden">
@@ -99,9 +104,11 @@ export const BrutalistLoginPage: React.FC = () => {
             <div className="bg-slate-900 text-white p-6 sm:p-7 border-b border-slate-800 relative">
               <div className="flex items-start justify-between gap-4">
                 <div className="flex items-center gap-3.5">
-                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-600 to-teal-800 flex items-center justify-center shadow-lg shadow-emerald-950/40 text-white font-bold text-xl ring-1 ring-emerald-400/40 shrink-0">
-                    F
-                  </div>
+                  <img 
+                    src="/assets/aistudio/00E4E085-7B00-4F64-BD05-2249D1CAA102_c81dd0be.PNG" 
+                    alt="FAFAB Logo" 
+                    className="w-14 h-14 rounded-full border-2 border-amber-400/90 shadow-lg object-contain bg-slate-950 ring-2 ring-emerald-500/40 shrink-0" 
+                  />
                   <div>
                     <div className="flex items-center gap-2">
                       <h1 className="font-bold text-lg sm:text-xl text-white tracking-tight leading-snug">
@@ -112,7 +119,7 @@ export const BrutalistLoginPage: React.FC = () => {
                       </span>
                     </div>
                     <p className="text-xs text-slate-400 mt-0.5">
-                      Enterprise Financials, Invoicing & Payroll Engine
+                      Technology · Workforce · Education
                     </p>
                   </div>
                 </div>
@@ -212,7 +219,7 @@ export const BrutalistLoginPage: React.FC = () => {
                 >
                   <KeyRound className="w-3.5 h-3.5 text-emerald-600" />
                   <span>
-                    {fillFeedback ? 'Credentials Loaded (admin@fafab.com.pk / admin)' : 'Click to Auto-Fill Default Admin Credentials'}
+                    {fillFeedback ? `Credentials Loaded (${adminCredentials.username} / ••••••••)` : 'Click to Auto-Fill Authorized Admin Credentials'}
                   </span>
                   {fillFeedback && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 ml-1" />}
                 </button>
@@ -236,21 +243,17 @@ export const BrutalistLoginPage: React.FC = () => {
                 <span>Single-User Enterprise Security Policy</span>
               </div>
               <p className="text-[11px] leading-relaxed text-slate-500">
-                This deployment is restricted exclusively to the Chief Administrator. Multi-account self-registration is permanently disabled. Invoices in PKR, USD, EUR, and GBP, expense ledgers, and payroll disbursements are executed under central authority.
+                This deployment is restricted exclusively to the Chief Administrator. Multi-account self-registration is permanently disabled. Credentials can be customized inside Company & System Settings.
               </p>
             </div>
           </div>
 
           {/* Quick Info Box underneath */}
           <div className="mt-4 p-3 bg-slate-900/90 backdrop-blur-xs border border-slate-800 rounded-xl flex items-center justify-between text-xs text-slate-300">
-            <span className="text-slate-400 font-medium">Default Admin Access:</span>
+            <span className="text-slate-400 font-medium">Registered Admin Account:</span>
             <div className="flex items-center gap-2">
               <code className="bg-slate-800 text-emerald-400 font-mono text-[11px] px-2 py-0.5 rounded border border-slate-700">
-                admin@fafab.com.pk
-              </code>
-              <span className="text-slate-500">/</span>
-              <code className="bg-slate-800 text-emerald-400 font-mono text-[11px] px-2 py-0.5 rounded border border-slate-700">
-                admin
+                {adminCredentials.username}
               </code>
             </div>
           </div>

@@ -80,14 +80,16 @@ export const Sidebar: React.FC = () => {
         }`}
       >
         {/* Brand Header */}
-        <div className="p-5 border-b border-slate-800/80 flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-600 to-teal-800 flex items-center justify-center shadow-lg shadow-emerald-950/40 text-white font-bold text-lg ring-1 ring-emerald-400/30">
-              F
-            </div>
-            <div>
+        <div className="p-4 sm:p-5 border-b border-slate-800/80 flex items-center justify-between">
+          <div className="flex items-center space-x-3 min-w-0">
+            <img 
+              src="/assets/aistudio/00E4E085-7B00-4F64-BD05-2249D1CAA102_c81dd0be.PNG" 
+              alt="FAFAB Logo" 
+              className="w-10 h-10 rounded-full border border-amber-400/80 shadow-md object-contain bg-slate-950 shrink-0" 
+            />
+            <div className="min-w-0">
               <div className="flex items-center space-x-1.5">
-                <span className="font-bold text-base tracking-tight text-white truncate max-w-[140px]">{companyProfile.name}</span>
+                <span className="font-bold text-base tracking-tight text-white truncate max-w-[130px]">{companyProfile.name}</span>
                 <span className="px-1.5 py-0.5 text-[10px] font-semibold bg-emerald-500/20 text-emerald-300 rounded border border-emerald-500/30">
                   ERP
                 </span>

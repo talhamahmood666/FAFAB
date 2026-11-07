@@ -50,18 +50,18 @@ const AppContent: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-100 flex text-slate-900 font-sans antialiased">
+    <div className="h-screen max-h-screen overflow-hidden bg-slate-100 flex text-slate-900 font-sans antialiased">
       {/* Persistent Left Sidebar */}
       <Sidebar />
 
       {/* Main Content Viewport */}
-      <div className="flex-1 lg:pl-72 flex flex-col min-h-screen">
+      <div className="flex-1 lg:pl-72 flex flex-col h-screen overflow-hidden">
         <Header 
           onOpenNewInvoice={handleOpenNewInvoice}
           onOpenNewExpense={handleOpenNewExpense}
         />
 
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto">
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto">
           {activeModule === 'dashboard' && (
             <ExecutiveDashboard
               onOpenNewInvoice={handleOpenNewInvoice}

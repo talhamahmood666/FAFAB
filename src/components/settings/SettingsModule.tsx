@@ -77,14 +77,55 @@ export const SettingsModule: React.FC = () => {
     pullFromSupabase,
     retryAutoSync,
     adminCredentials,
-    updateAdminPassword
+    updateAdminPassword,
+    updateAdminCredentials
   } = useErp();
 
-  const [activeTab, setActiveTab] = useState<'profile' | 'pseb' | 'categories' | 'currency' | 'backup' | 'supabase'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'security' | 'pseb' | 'categories' | 'currency' | 'backup' | 'supabase'>('profile');
 
-  // Admin Password State
-  const [newAdminPassword, setNewAdminPassword] = useState('');
-  const [passwordSuccessMessage, setPasswordSuccessMessage] = useState('');
+  // Admin Credentials & Security State
+  const [adminUsernameInput, setAdminUsernameInput] = useState(adminCredentials.username || 'admin@fafab.com.pk');
+  const [currentPassInput, setCurrentPassInput] = useState('');
+  const [newAdminPasswordInput, setNewAdminPasswordInput] = useState('');
+  const [confirmAdminPasswordInput, setConfirmAdminPasswordInput] = useState('');
+  const [credentialsMessage, setCredentialsMessage] = useState<{ text: string; isError?: boolean } | null>(null);
+
+  const handleUpdateCredentials = (e: React.FormEvent) => {
+    e.preventDefault();
+    setCredentialsMessage(null);
+
+    const trimmedUser = adminUsernameInput.trim();
+    if (!trimmedUser) {
+      setCredentialsMessage({ text: 'Please enter a valid administrator email or username.', isError: true });
+      return;
+    }
+
+    if (adminCredentials.password && currentPassInput !== adminCredentials.password) {
+      setCredentialsMessage({ text: 'Incorrect current password! Please enter your existing passphrase to save changes.', isError: true });
+      return;
+    }
+
+    if (newAdminPasswordInput || confirmAdminPasswordInput) {
+      if (newAdminPasswordInput !== confirmAdminPasswordInput) {
+        setCredentialsMessage({ text: 'New password and confirmation password do not match.', isError: true });
+        return;
+      }
+    }
+
+    const newPassToSave = newAdminPasswordInput.trim() ? newAdminPasswordInput.trim() : adminCredentials.password;
+    updateAdminCredentials(trimmedUser, newPassToSave);
+
+    setCurrentPassInput('');
+    setNewAdminPasswordInput('');
+    setConfirmAdminPasswordInput('');
+
+    setCredentialsMessage({
+      text: `Administrator credentials updated successfully! New Username: "${trimmedUser}". Logging out will now require these updated credentials.`,
+      isError: false
+    });
+
+    setTimeout(() => setCredentialsMessage(null), 6000);
+  };
 
   // Supabase UI state
   const [supabaseTestStatus, setSupabaseTestStatus] = useState<{ loading: boolean; result?: SupabaseTestResult }>({ loading: false });
@@ -331,6 +372,19 @@ export const SettingsModule: React.FC = () => {
         >
           <Building2 className="w-4 h-4" />
           <span>Company Profile & Tax IDs</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('security')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
+            activeTab === 'security'
+              ? 'bg-emerald-600 text-white shadow-xs'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+          }`}
+        >
+          <ShieldCheck className="w-4 h-4 text-emerald-400" />
+          <span>Admin Username & Password</span>
         </button>
 
         <button
@@ -686,57 +740,36 @@ export const SettingsModule: React.FC = () => {
 
           {/* Single Admin Security Card */}
           <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-4">
-            <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
-              <ShieldCheck className="w-5 h-5 text-emerald-600" />
-              <div>
-                <h3 className="font-bold text-slate-900 text-sm">Single Root Administrator Security</h3>
-                <p className="text-[11px] text-slate-500">Configure login credentials for the sole authorized ERP administrator account.</p>
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="w-5 h-5 text-emerald-600" />
+                <div>
+                  <h3 className="font-bold text-slate-900 text-sm">Single Root Administrator Security</h3>
+                  <p className="text-[11px] text-slate-500">Configure login credentials for the sole authorized ERP administrator account.</p>
+                </div>
               </div>
+
+              <button
+                type="button"
+                onClick={() => setActiveTab('security')}
+                className="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-semibold text-xs rounded-lg border border-emerald-200 transition-colors cursor-pointer"
+              >
+                Manage Credentials
+              </button>
             </div>
 
-            {passwordSuccessMessage && (
-              <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-xs text-emerald-800 font-medium flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                <span>{passwordSuccessMessage}</span>
-              </div>
-            )}
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+            <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 text-xs flex items-center justify-between">
               <div>
-                <label className="font-semibold text-slate-700 block mb-1">Registered Administrator User</label>
-                <div className="p-2.5 bg-slate-100 border border-slate-200 rounded-lg font-mono font-bold text-slate-800">
-                  {adminCredentials.username} (or "admin")
-                </div>
-                <p className="text-[10px] text-slate-400 mt-1">Single-user architecture. Only this identity can log in.</p>
+                <span className="text-slate-500 block">Active Administrator Username:</span>
+                <span className="font-mono font-bold text-slate-900 text-sm">{adminCredentials.username}</span>
               </div>
-
-              <div>
-                <label className="font-semibold text-slate-700 block mb-1">Update Admin Passphrase</label>
-                <div className="flex gap-2">
-                  <input
-                    type="password"
-                    value={newAdminPassword}
-                    onChange={(e) => setNewAdminPassword(e.target.value)}
-                    placeholder="Enter new admin passphrase..."
-                    className="flex-1 p-2.5 bg-slate-50 border border-slate-300 rounded-lg focus:bg-white text-slate-900 font-mono text-xs"
-                  />
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      if (!newAdminPassword.trim()) return;
-                      updateAdminPassword(newAdminPassword.trim());
-                      setNewAdminPassword('');
-                      setPasswordSuccessMessage('Administrator security passphrase updated successfully!');
-                      setTimeout(() => setPasswordSuccessMessage(''), 4000);
-                    }}
-                    className="px-4 py-2.5 bg-slate-900 hover:bg-black text-white font-bold rounded-lg transition-colors cursor-pointer shrink-0"
-                  >
-                    Update
-                  </button>
-                </div>
-                <p className="text-[10px] text-slate-400 mt-1">Used on the Brutalist Login Gate.</p>
-              </div>
+              <button
+                type="button"
+                onClick={() => setActiveTab('security')}
+                className="px-4 py-2 bg-slate-900 hover:bg-black text-white font-bold rounded-lg transition-colors cursor-pointer"
+              >
+                Change Username / Password
+              </button>
             </div>
           </div>
 
@@ -748,6 +781,110 @@ export const SettingsModule: React.FC = () => {
               <Save className="w-4 h-4" />
               <span>Save Corporate Profile Settings</span>
             </button>
+          </div>
+        </form>
+      )}
+
+      {/* ======================================================================= */}
+      {/* TAB: ADMIN USERNAME & PASSWORD SECURITY                                 */}
+      {/* ======================================================================= */}
+      {activeTab === 'security' && (
+        <form onSubmit={handleUpdateCredentials} className="space-y-6">
+          <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-6">
+            <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
+              <div className="w-10 h-10 rounded-xl bg-slate-900 text-emerald-400 flex items-center justify-center font-bold shadow-sm shrink-0">
+                <ShieldCheck className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-bold text-slate-900 text-base">Root Administrator Account Security</h3>
+                <p className="text-xs text-slate-500">
+                  Change your administrator email/username and passphrase. Updating credentials takes effect immediately and persists across sessions.
+                </p>
+              </div>
+            </div>
+
+            {credentialsMessage && (
+              <div className={`p-4 rounded-xl text-xs font-semibold flex items-center gap-2.5 ${
+                credentialsMessage.isError 
+                  ? 'bg-rose-50 border border-rose-200 text-rose-800' 
+                  : 'bg-emerald-50 border border-emerald-200 text-emerald-800'
+              }`}>
+                {credentialsMessage.isError ? (
+                  <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+                ) : (
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                )}
+                <span>{credentialsMessage.text}</span>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 text-xs">
+              <div className="md:col-span-2 bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+                <label className="font-bold text-slate-800 block text-xs">
+                  1. Administrator Email / Username *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={adminUsernameInput}
+                  onChange={(e) => setAdminUsernameInput(e.target.value)}
+                  placeholder="e.g. admin@fafab.com.pk"
+                  className="w-full p-2.5 bg-white border border-slate-300 rounded-lg font-medium text-slate-900 focus:outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 text-sm"
+                />
+                <p className="text-[11px] text-slate-500">
+                  Currently active username: <strong className="font-mono text-slate-900">{adminCredentials.username}</strong>
+                </p>
+              </div>
+
+              <div className="md:col-span-2 bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+                <label className="font-bold text-slate-800 block text-xs">
+                  2. Current Security Passphrase (Required to save changes)
+                </label>
+                <input
+                  type="password"
+                  value={currentPassInput}
+                  onChange={(e) => setCurrentPassInput(e.target.value)}
+                  placeholder="Enter current password..."
+                  className="w-full p-2.5 bg-white border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 text-sm font-mono"
+                />
+              </div>
+
+              <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+                <label className="font-bold text-slate-800 block text-xs">
+                  3. New Passphrase (Optional - leave blank to keep existing)
+                </label>
+                <input
+                  type="password"
+                  value={newAdminPasswordInput}
+                  onChange={(e) => setNewAdminPasswordInput(e.target.value)}
+                  placeholder="Enter new admin passphrase..."
+                  className="w-full p-2.5 bg-white border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 text-sm font-mono"
+                />
+              </div>
+
+              <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+                <label className="font-bold text-slate-800 block text-xs">
+                  4. Confirm New Passphrase
+                </label>
+                <input
+                  type="password"
+                  value={confirmAdminPasswordInput}
+                  onChange={(e) => setConfirmAdminPasswordInput(e.target.value)}
+                  placeholder="Re-enter new admin passphrase..."
+                  className="w-full p-2.5 bg-white border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 text-sm font-mono"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-2">
+              <button
+                type="submit"
+                className="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-md flex items-center gap-2 transition-all cursor-pointer"
+              >
+                <Save className="w-4 h-4" />
+                <span>Update Security Credentials</span>
+              </button>
+            </div>
           </div>
         </form>
       )}

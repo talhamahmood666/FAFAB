@@ -249,8 +249,15 @@ export const PsebCertificateModal: React.FC = () => {
                 <p>
                   This is to certify that
                 </p>
-                <div className="text-xl sm:text-2xl font-black text-[#0f4c3a] tracking-tight uppercase font-serif py-1 border-b border-dashed border-[#0f4c3a]/40 inline-block px-4">
-                  {companyProfile.name || 'FAFAB LIMITED'}
+                <div className="flex flex-col items-center justify-center my-1">
+                  <img 
+                    src="/assets/aistudio/00E4E085-7B00-4F64-BD05-2249D1CAA102_c81dd0be.PNG" 
+                    alt="FAFAB Logo" 
+                    className="w-16 h-16 rounded-full border-2 border-[#0f4c3a]/60 shadow-md object-contain bg-slate-900 mb-1" 
+                  />
+                  <div className="text-xl sm:text-2xl font-black text-[#0f4c3a] tracking-tight uppercase font-serif py-1 border-b border-dashed border-[#0f4c3a]/40 inline-block px-4">
+                    {companyProfile.name || 'FAFAB LIMITED'}
+                  </div>
                 </div>
                 <p className="text-xs text-slate-600">
                   Located at: <strong className="text-slate-900">{companyProfile.address}, {companyProfile.city}, {companyProfile.province}, Pakistan</strong>

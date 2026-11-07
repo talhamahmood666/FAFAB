@@ -140,8 +140,9 @@ interface ErpContextType {
   isAuthenticated: boolean;
   login: (usernameOrEmail: string, password: string) => { success: boolean; error?: string };
   logout: () => void;
-  adminCredentials: { username: string };
+  adminCredentials: { username: string; password?: string };
   updateAdminPassword: (newPass: string) => void;
+  updateAdminCredentials: (newUsername: string, newPassword?: string) => void;
 }
 
 const ErpContext = createContext<ErpContextType | undefined>(undefined);
@@ -160,8 +161,8 @@ export const ErpProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const login = (usernameOrEmail: string, password: string) => {
     const inputUser = usernameOrEmail.trim().toLowerCase();
     const storedUser = adminCredentials.username.toLowerCase();
-    const isUserMatch = inputUser === storedUser || inputUser === 'admin';
-    const isPasswordMatch = password === adminCredentials.password || (password === 'admin' && adminCredentials.password === 'admin');
+    const isUserMatch = inputUser === storedUser || (storedUser === 'admin@fafab.com.pk' && inputUser === 'admin');
+    const isPasswordMatch = password === adminCredentials.password;
 
     if (isUserMatch && isPasswordMatch) {
       localStorage.setItem('fafab_auth_session', 'true');
@@ -171,7 +172,7 @@ export const ErpProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
 
     if (!isUserMatch) {
-      return { success: false, error: 'ACCESS REJECTED: ONLY THE SINGLE REGISTERED ADMINISTRATOR HAS ACCESS.' };
+      return { success: false, error: 'ACCESS REJECTED: UNKNOWN ADMINISTRATOR USERNAME OR EMAIL.' };
     }
 
     return { success: false, error: 'INVALID SECURITY PASSPHRASE. VERIFY AND RETRY.' };
@@ -185,6 +186,14 @@ export const ErpProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const updateAdminPassword = (newPass: string) => {
     if (!newPass.trim()) return;
     const updated = { ...adminCredentials, password: newPass.trim() };
+    setAdminCredentials(updated);
+    localStorage.setItem('fafab_admin_credentials', JSON.stringify(updated));
+  };
+
+  const updateAdminCredentials = (newUsername: string, newPassword?: string) => {
+    const updatedUsername = newUsername.trim() || adminCredentials.username;
+    const updatedPassword = newPassword && newPassword.trim() ? newPassword.trim() : adminCredentials.password;
+    const updated = { username: updatedUsername, password: updatedPassword };
     setAdminCredentials(updated);
     localStorage.setItem('fafab_admin_credentials', JSON.stringify(updated));
   };
@@ -1027,6 +1036,7 @@ export const ErpProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         logout,
         adminCredentials,
         updateAdminPassword,
+        updateAdminCredentials,
       }}
     >
       {children}
