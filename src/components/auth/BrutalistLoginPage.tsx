@@ -18,13 +18,12 @@ import {
 import { useErp } from '../../context/ErpContext';
 
 export const BrutalistLoginPage: React.FC = () => {
-  const { login, companyProfile, adminCredentials } = useErp();
-  const [username, setUsername] = useState(adminCredentials.username || 'admin@fafab.com.pk');
-  const [password, setPassword] = useState(adminCredentials.password || 'admin');
+  const { login, companyProfile } = useErp();
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [fillFeedback, setFillFeedback] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,14 +37,6 @@ export const BrutalistLoginPage: React.FC = () => {
         setIsSubmitting(false);
       }
     }, 250);
-  };
-
-  const handleQuickFill = () => {
-    setUsername(adminCredentials.username || 'admin@fafab.com.pk');
-    setPassword(adminCredentials.password || 'admin');
-    setFillFeedback(true);
-    setErrorMessage('');
-    setTimeout(() => setFillFeedback(false), 2200);
   };
 
   return (
@@ -172,9 +163,11 @@ export const BrutalistLoginPage: React.FC = () => {
                     id="admin-user"
                     type="text"
                     required
+                    autoFocus
+                    autoComplete="off"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
-                    placeholder="admin@fafab.com.pk"
+                    placeholder="Enter email or username..."
                     className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 font-medium text-sm focus:outline-none focus:bg-white focus:border-emerald-600 focus:ring-3 focus:ring-emerald-500/15 transition-all placeholder:text-slate-400"
                   />
                 </div>
@@ -194,9 +187,10 @@ export const BrutalistLoginPage: React.FC = () => {
                     id="admin-pass"
                     type={showPassword ? 'text' : 'password'}
                     required
+                    autoComplete="current-password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Enter admin password..."
+                    placeholder="Enter security password..."
                     className="w-full px-3.5 py-2.5 pr-11 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 font-medium text-sm focus:outline-none focus:bg-white focus:border-emerald-600 focus:ring-3 focus:ring-emerald-500/15 transition-all placeholder:text-slate-400"
                   />
                   <button
@@ -208,21 +202,6 @@ export const BrutalistLoginPage: React.FC = () => {
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
-              </div>
-
-              {/* Quick Fill Button */}
-              <div>
-                <button
-                  type="button"
-                  onClick={handleQuickFill}
-                  className="w-full py-2 px-3 bg-emerald-50 hover:bg-emerald-100/80 border border-emerald-200/70 text-emerald-800 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition-colors cursor-pointer"
-                >
-                  <KeyRound className="w-3.5 h-3.5 text-emerald-600" />
-                  <span>
-                    {fillFeedback ? `Credentials Loaded (${adminCredentials.username} / ••••••••)` : 'Click to Auto-Fill Authorized Admin Credentials'}
-                  </span>
-                  {fillFeedback && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 ml-1" />}
-                </button>
               </div>
 
               {/* Submit Button */}
@@ -243,18 +222,8 @@ export const BrutalistLoginPage: React.FC = () => {
                 <span>Single-User Enterprise Security Policy</span>
               </div>
               <p className="text-[11px] leading-relaxed text-slate-500">
-                This deployment is restricted exclusively to the Chief Administrator. Multi-account self-registration is permanently disabled. Credentials can be customized inside Company & System Settings.
+                This deployment is restricted exclusively to the Chief Administrator. Multi-account self-registration is permanently disabled. Enter your authorized administrator email/username and passphrase to access.
               </p>
-            </div>
-          </div>
-
-          {/* Quick Info Box underneath */}
-          <div className="mt-4 p-3 bg-slate-900/90 backdrop-blur-xs border border-slate-800 rounded-xl flex items-center justify-between text-xs text-slate-300">
-            <span className="text-slate-400 font-medium">Registered Admin Account:</span>
-            <div className="flex items-center gap-2">
-              <code className="bg-slate-800 text-emerald-400 font-mono text-[11px] px-2 py-0.5 rounded border border-slate-700">
-                {adminCredentials.username}
-              </code>
             </div>
           </div>
         </div>

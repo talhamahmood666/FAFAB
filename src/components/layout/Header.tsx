@@ -38,6 +38,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenNewInvoice, onOpenNewExpen
     isSupabaseActive,
     autoSyncStatus,
     isSupabaseSyncing,
+    adminCredentials,
     logout
   } = useErp();
 
@@ -188,9 +189,11 @@ export const Header: React.FC<HeaderProps> = ({ onOpenNewInvoice, onOpenNewExpen
 
           {/* Single Admin Identity & Logout */}
           <div className="flex items-center border-l border-slate-200 pl-3 space-x-2">
-            <div className="hidden lg:flex flex-col text-right">
-              <span className="text-xs font-bold text-slate-900 leading-none">Root Admin</span>
-              <span className="text-[10px] text-emerald-600 font-semibold mt-0.5">Exclusive Access</span>
+            <div className="hidden lg:flex flex-col text-right max-w-[130px]">
+              <span className="text-xs font-bold text-slate-900 leading-none truncate" title={adminCredentials.username}>
+                {adminCredentials.username}
+              </span>
+              <span className="text-[10px] text-emerald-600 font-semibold mt-0.5">Root Admin</span>
             </div>
 
             <button

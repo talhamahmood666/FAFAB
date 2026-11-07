@@ -32,6 +32,7 @@ export const Sidebar: React.FC = () => {
     leaveRequests,
     companyProfile,
     setIsPsebModalOpen,
+    adminCredentials,
     logout
   } = useErp();
 
@@ -265,12 +266,12 @@ export const Sidebar: React.FC = () => {
                 ADMIN
               </div>
               <div className="min-w-0">
-                <div className="text-xs font-semibold text-white truncate flex items-center space-x-1">
-                  <span>Talha Mahmood</span>
+                <div className="text-xs font-semibold text-white truncate flex items-center space-x-1" title={adminCredentials.username}>
+                  <span className="truncate">{adminCredentials.username.split('@')[0]}</span>
                   <BadgeCheck className="w-3.5 h-3.5 text-emerald-400 inline shrink-0" />
                 </div>
-                <div className="text-[10px] text-emerald-400 font-medium truncate">
-                  Sole Administrator (Root)
+                <div className="text-[10px] text-emerald-400 font-medium truncate" title={adminCredentials.username}>
+                  {adminCredentials.username}
                 </div>
               </div>
             </div>

@@ -88,7 +88,15 @@ export const SettingsModule: React.FC = () => {
   const [currentPassInput, setCurrentPassInput] = useState('');
   const [newAdminPasswordInput, setNewAdminPasswordInput] = useState('');
   const [confirmAdminPasswordInput, setConfirmAdminPasswordInput] = useState('');
+  const [showPassFields, setShowPassFields] = useState(false);
   const [credentialsMessage, setCredentialsMessage] = useState<{ text: string; isError?: boolean } | null>(null);
+
+  // Keep adminUsernameInput in sync if adminCredentials changes
+  React.useEffect(() => {
+    if (adminCredentials.username) {
+      setAdminUsernameInput(adminCredentials.username);
+    }
+  }, [adminCredentials.username]);
 
   const handleUpdateCredentials = (e: React.FormEvent) => {
     e.preventDefault();
@@ -100,14 +108,22 @@ export const SettingsModule: React.FC = () => {
       return;
     }
 
-    if (adminCredentials.password && currentPassInput !== adminCredentials.password) {
-      setCredentialsMessage({ text: 'Incorrect current password! Please enter your existing passphrase to save changes.', isError: true });
-      return;
-    }
+    const isChangingPassword = Boolean(newAdminPasswordInput.trim() || confirmAdminPasswordInput.trim());
 
-    if (newAdminPasswordInput || confirmAdminPasswordInput) {
+    // If changing password, verify current password if one is set
+    if (isChangingPassword) {
+      if (adminCredentials.password && adminCredentials.password !== 'admin' && currentPassInput !== adminCredentials.password) {
+        setCredentialsMessage({ text: 'Incorrect current password! Please enter your existing passphrase to change your password.', isError: true });
+        return;
+      }
       if (newAdminPasswordInput !== confirmAdminPasswordInput) {
         setCredentialsMessage({ text: 'New password and confirmation password do not match.', isError: true });
+        return;
+      }
+    } else {
+      // Just updating username: if currentPassInput is provided and wrong, warn
+      if (currentPassInput && adminCredentials.password && currentPassInput !== adminCredentials.password) {
+        setCredentialsMessage({ text: 'Incorrect current password entered. Please enter your existing passphrase or leave it blank.', isError: true });
         return;
       }
     }
@@ -120,7 +136,7 @@ export const SettingsModule: React.FC = () => {
     setConfirmAdminPasswordInput('');
 
     setCredentialsMessage({
-      text: `Administrator credentials updated successfully! New Username: "${trimmedUser}". Logging out will now require these updated credentials.`,
+      text: `Administrator credentials updated & saved! Active Username: "${trimmedUser}". Changes are saved to localStorage and synchronized.`,
       isError: false
     });
 
@@ -838,15 +854,18 @@ export const SettingsModule: React.FC = () => {
 
               <div className="md:col-span-2 bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
                 <label className="font-bold text-slate-800 block text-xs">
-                  2. Current Security Passphrase (Required to save changes)
+                  2. Current Security Passphrase
                 </label>
                 <input
                   type="password"
                   value={currentPassInput}
                   onChange={(e) => setCurrentPassInput(e.target.value)}
-                  placeholder="Enter current password..."
+                  placeholder="Enter current password (default: admin)..."
                   className="w-full p-2.5 bg-white border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 text-sm font-mono"
                 />
+                <p className="text-[11px] text-slate-500">
+                  Required if changing to a new password (default initial password was <code className="bg-slate-200 px-1 py-0.5 rounded font-mono text-slate-700">admin</code>).
+                </p>
               </div>
 
               <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">

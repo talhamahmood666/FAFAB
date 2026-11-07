@@ -18,6 +18,7 @@ export interface SupabaseFullData {
   companyProfile?: CompanyProfile;
   expenseCategories?: string[];
   customExchangeRates?: Record<string, number>;
+  adminCredentials?: { username: string; password?: string };
   invoices?: Invoice[];
   customers?: Customer[];
   expenses?: Expense[];
@@ -336,12 +337,14 @@ export const fetchAllFromSupabase = async (): Promise<SupabaseFetchResult> => {
     let companyProfile: CompanyProfile | undefined;
     let expenseCategories: string[] | undefined;
     let customExchangeRates: Record<string, number> | undefined;
+    let adminCredentials: { username: string; password?: string } | undefined;
 
     if (settingsRes.data) {
       for (const row of settingsRes.data) {
         if (row.key === 'company_profile') companyProfile = row.value;
         if (row.key === 'expense_categories') expenseCategories = row.value;
         if (row.key === 'custom_exchange_rates') customExchangeRates = row.value;
+        if (row.key === 'admin_credentials') adminCredentials = row.value;
       }
     }
 
@@ -349,6 +352,7 @@ export const fetchAllFromSupabase = async (): Promise<SupabaseFetchResult> => {
       companyProfile,
       expenseCategories,
       customExchangeRates,
+      adminCredentials,
       invoices: invoicesRes.data ? invoicesRes.data.map((r: any) => (r.payload ? r.payload : r) as Invoice) : undefined,
       customers: customersRes.data ? customersRes.data.map((r: any) => (r.payload ? r.payload : r) as Customer) : undefined,
       expenses: expensesRes.data ? expensesRes.data.map((r: any) => (r.payload ? r.payload : r) as Expense) : undefined,
@@ -378,11 +382,16 @@ export const syncAllToSupabase = async (data: Required<SupabaseFullData>): Promi
 
   try {
     // 1. Settings
-    const settingsRes = await supabase.from('system_settings').upsert([
+    const settingsPayload: Array<{ key: string; value: any }> = [
       { key: 'company_profile', value: data.companyProfile },
       { key: 'expense_categories', value: data.expenseCategories },
       { key: 'custom_exchange_rates', value: data.customExchangeRates },
-    ]);
+    ];
+    if (data.adminCredentials) {
+      settingsPayload.push({ key: 'admin_credentials', value: data.adminCredentials });
+    }
+
+    const settingsRes = await supabase.from('system_settings').upsert(settingsPayload);
 
     if (settingsRes.error) {
       if (isTableMissingError(settingsRes.error)) {

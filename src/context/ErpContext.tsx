@@ -412,6 +412,16 @@ export const ErpProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               if (remote.companyProfile) setCompanyProfile(remote.companyProfile);
               if (remote.expenseCategories && remote.expenseCategories.length > 0) setExpenseCategories(remote.expenseCategories);
               if (remote.customExchangeRates) setCustomExchangeRates(remote.customExchangeRates as any);
+              if (remote.adminCredentials?.username) {
+                setAdminCredentials(prev => {
+                  const merged = {
+                    username: remote.adminCredentials!.username,
+                    password: remote.adminCredentials!.password || prev.password
+                  };
+                  localStorage.setItem('fafab_admin_credentials', JSON.stringify(merged));
+                  return merged;
+                });
+              }
               if (remote.invoices && remote.invoices.length > 0) setInvoices(remote.invoices);
               if (remote.customers && remote.customers.length > 0) setCustomers(remote.customers);
               if (remote.expenses && remote.expenses.length > 0) setExpenses(remote.expenses);
@@ -456,6 +466,7 @@ export const ErpProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         companyProfile,
         expenseCategories,
         customExchangeRates,
+        adminCredentials,
         invoices,
         customers,
         expenses,
@@ -503,6 +514,16 @@ export const ErpProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (remote.companyProfile) setCompanyProfile(remote.companyProfile);
       if (remote.expenseCategories && remote.expenseCategories.length > 0) setExpenseCategories(remote.expenseCategories);
       if (remote.customExchangeRates) setCustomExchangeRates(remote.customExchangeRates as any);
+      if (remote.adminCredentials?.username) {
+        setAdminCredentials(prev => {
+          const merged = {
+            username: remote.adminCredentials!.username,
+            password: remote.adminCredentials!.password || prev.password
+          };
+          localStorage.setItem('fafab_admin_credentials', JSON.stringify(merged));
+          return merged;
+        });
+      }
       if (remote.invoices && remote.invoices.length > 0) setInvoices(remote.invoices);
       if (remote.customers && remote.customers.length > 0) setCustomers(remote.customers);
       if (remote.expenses && remote.expenses.length > 0) setExpenses(remote.expenses);
@@ -551,6 +572,7 @@ export const ErpProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           companyProfile,
           expenseCategories,
           customExchangeRates,
+          adminCredentials,
           invoices,
           customers,
           expenses,
@@ -601,6 +623,7 @@ export const ErpProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     companyProfile,
     expenseCategories,
     customExchangeRates,
+    adminCredentials,
     isSupabaseActive,
     isAutoSyncEnabled
   ]);
