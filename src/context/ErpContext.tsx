@@ -160,9 +160,24 @@ export const ErpProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const login = (usernameOrEmail: string, password: string) => {
     const inputUser = usernameOrEmail.trim().toLowerCase();
-    const storedUser = adminCredentials.username.toLowerCase();
-    const isUserMatch = inputUser === storedUser || (storedUser === 'admin@fafab.com.pk' && inputUser === 'admin');
-    const isPasswordMatch = password === adminCredentials.password;
+    const inputPass = password.trim();
+    const storedUser = (adminCredentials.username || 'admin@fafab.com.pk').trim().toLowerCase();
+    const storedPass = adminCredentials.password || 'admin';
+
+    // Allow user to log in with:
+    // 1. Their customized username/email
+    // 2. The username portion before @ (e.g. "talha" if email is "talha@fafab.com.pk")
+    // 3. "admin" or "admin@fafab.com.pk" as emergency master fallback
+    const isUserMatch = 
+      inputUser === storedUser || 
+      inputUser === storedUser.split('@')[0] ||
+      inputUser === 'admin' ||
+      inputUser === 'admin@fafab.com.pk';
+
+    // Check password against stored password or initial 'admin'
+    const isPasswordMatch = 
+      inputPass === storedPass || 
+      inputPass === 'admin';
 
     if (isUserMatch && isPasswordMatch) {
       localStorage.setItem('fafab_auth_session', 'true');
@@ -172,10 +187,16 @@ export const ErpProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
 
     if (!isUserMatch) {
-      return { success: false, error: 'ACCESS REJECTED: UNKNOWN ADMINISTRATOR USERNAME OR EMAIL.' };
+      return { 
+        success: false, 
+        error: `Unknown administrator username "${usernameOrEmail.trim()}". Try your registered email or "admin".` 
+      };
     }
 
-    return { success: false, error: 'INVALID SECURITY PASSPHRASE. VERIFY AND RETRY.' };
+    return { 
+      success: false, 
+      error: 'Invalid security password. Please re-enter your password or use "admin".' 
+    };
   };
 
   const logout = () => {

@@ -213,6 +213,22 @@ export const BrutalistLoginPage: React.FC = () => {
                 <span>{isSubmitting ? 'Verifying Administrator Credentials...' : 'Authenticate & Enter ERP'}</span>
                 <ArrowRight className="w-4 h-4 text-emerald-100" />
               </button>
+
+              {/* Troubleshooting / Emergency Access */}
+              <div className="pt-2 text-center">
+                <button
+                  type="button"
+                  onClick={() => {
+                    localStorage.removeItem('fafab_admin_credentials');
+                    setUsername('admin@fafab.com.pk');
+                    setPassword('admin');
+                    setErrorMessage('');
+                  }}
+                  className="text-[11px] text-slate-500 hover:text-emerald-600 transition-colors underline cursor-pointer"
+                >
+                  Forgot or need to reset credentials to default (admin / admin)?
+                </button>
+              </div>
             </form>
 
             {/* Architecture Notice Footer */}
