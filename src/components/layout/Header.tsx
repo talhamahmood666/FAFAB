@@ -43,41 +43,41 @@ export const Header: React.FC<HeaderProps> = ({ onOpenNewInvoice, onOpenNewExpen
   } = useErp();
 
   return (
-    <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-xs">
-      <div className="px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+    <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-xs shrink-0 w-full">
+      <div className="px-3 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-2 sm:gap-4 w-full min-w-0">
         {/* Left: Mobile trigger & breadcrumb / location */}
-        <div className="flex items-center space-x-3">
+        <div className="flex items-center space-x-2 sm:space-x-3 min-w-0 shrink">
           <button
             type="button"
             aria-label="Open navigation sidebar"
             onClick={() => setIsSidebarOpen(true)}
-            className="lg:hidden p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg"
+            className="lg:hidden p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg shrink-0"
           >
             <Menu className="w-5 h-5" />
           </button>
 
-          <div className="hidden md:flex items-center space-x-2.5 text-xs text-slate-500 whitespace-nowrap">
+          <div className="flex items-center space-x-2 text-xs text-slate-500 whitespace-nowrap min-w-0">
             <img 
               src="/assets/aistudio/00E4E085-7B00-4F64-BD05-2249D1CAA102_c81dd0be.PNG" 
               alt="FAFAB Logo" 
               className="w-7 h-7 rounded-full border border-amber-400/80 shadow-xs object-contain bg-slate-900 shrink-0" 
             />
-            <span className="font-bold text-slate-900 text-sm">{companyProfile.name}</span>
-            <span>•</span>
-            <span className="hidden xl:flex items-center gap-1 text-slate-600">
+            <span className="font-bold text-slate-900 text-sm truncate max-w-[120px] sm:max-w-none">{companyProfile.name}</span>
+            <span className="hidden xl:inline">•</span>
+            <span className="hidden 2xl:flex items-center gap-1 text-slate-600">
               <Building2 className="w-3.5 h-3.5 text-emerald-600" />
               Sector C, Bahria Town Lahore
             </span>
-            <span className="hidden xl:inline">•</span>
-            <span className="px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 font-mono text-[11px] font-semibold border border-emerald-200">
+            <span className="hidden sm:inline">•</span>
+            <span className="hidden sm:inline-block px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 font-mono text-[11px] font-semibold border border-emerald-200 shrink-0">
               PRA 16%
             </span>
-            <span>•</span>
+            <span className="hidden md:inline">•</span>
             <button
               type="button"
               onClick={() => setIsPsebModalOpen(true)}
               title="Click to view official Pakistan Software Export Board (PSEB) Certificate"
-              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-mono text-[11px] font-bold border border-emerald-200 transition-colors cursor-pointer"
+              className="hidden md:inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-mono text-[11px] font-bold border border-emerald-200 transition-colors cursor-pointer shrink-0"
             >
               <Award className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
               <span>PSEB: {companyProfile.psebRegNo || 'PSEB-REG-2024-8943'}</span>
@@ -86,12 +86,12 @@ export const Header: React.FC<HeaderProps> = ({ onOpenNewInvoice, onOpenNewExpen
         </div>
 
         {/* Center: Search Bar */}
-        <div className="flex-1 max-w-md hidden md:block">
+        <div className="flex-1 max-w-xs xl:max-w-md hidden lg:block min-w-0">
           <div className="relative">
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
-              placeholder="Search invoices, clients, expenses, ledger accounts..."
+              placeholder="Search invoices, clients, expenses, accounts..."
               value={globalSearch}
               onChange={(e) => setGlobalSearch(e.target.value)}
               className="w-full pl-9 pr-4 py-1.5 bg-slate-100 hover:bg-slate-50 focus:bg-white text-xs text-slate-900 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all placeholder:text-slate-400"
@@ -100,7 +100,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenNewInvoice, onOpenNewExpen
         </div>
 
         {/* Right: Actions, Currency Switcher & Role Selector */}
-        <div className="flex items-center space-x-2 sm:space-x-3">
+        <div className="flex items-center space-x-1.5 sm:space-x-3 shrink-0">
           {/* Supabase Live Cloud Status Badge */}
           {isSupabaseActive && (
             <div className="flex items-center">
